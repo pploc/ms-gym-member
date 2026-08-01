@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -179,14 +180,15 @@ class MemberServiceUnitTest {
         when(memberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
-        MemberDto dto = memberService.updateProfile(memberId, "Jane Doe", "123456789", "http://avatar", "987654321");
+        LocalDate dob = LocalDate.of(1990, 1, 1);
+        MemberDto dto = memberService.updateProfile(memberId, "Jane Doe", "123456789", "http://avatar", dob);
 
         // Then
         assertNotNull(dto);
         assertEquals("Jane Doe", dto.fullName());
         assertEquals("123456789", dto.phone());
         assertEquals("http://avatar", dto.avatarUrl());
-        assertEquals("987654321", dto.emergencyContact());
+        assertEquals(dob, dto.dateOfBirth());
     }
 
     @Test

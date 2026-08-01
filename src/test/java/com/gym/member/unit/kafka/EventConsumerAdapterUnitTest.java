@@ -131,7 +131,7 @@ class EventConsumerAdapterUnitTest {
     void givenNewPaymentCompletedEvent_whenHandlePaymentCompleted_thenActivatesSubscriptionAndMarksProcessed() {
         // Given
         com.gym.member.domain.dto.MemberDto memberDto = new com.gym.member.domain.dto.MemberDto(
-                UUID.fromString(userId), UUID.fromString(userId), UUID.fromString(gymId), "John", "123", "", "", com.gym.member.domain.model.MembershipStatus.ACTIVE, null, null
+                UUID.fromString(userId), UUID.fromString(userId), UUID.fromString(gymId), "John", "123", "", null, com.gym.member.domain.model.MembershipStatus.ACTIVE, null, null
         );
         PaymentCompletedEvent payload = PaymentCompletedEvent.newBuilder()
                 .setUserId(userId)

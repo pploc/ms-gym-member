@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -63,14 +64,14 @@ public class MemberService {
     }
 
     @Transactional
-    public MemberDto updateProfile(String memberId, String fullName, String phone, String avatarUrl, String emergencyContact) {
+    public MemberDto updateProfile(String memberId, String fullName, String phone, String avatarUrl, LocalDate dateOfBirth) {
         MemberEntity entity = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found with id: " + memberId));
 
         if (fullName != null && !fullName.isBlank()) entity.setFullName(fullName);
         if (phone != null) entity.setPhone(phone);
         if (avatarUrl != null) entity.setAvatarUrl(avatarUrl);
-        if (emergencyContact != null) entity.setEmergencyContact(emergencyContact);
+        if (dateOfBirth != null) entity.setDateOfBirth(dateOfBirth);
 
         MemberEntity saved = memberRepository.save(entity);
         return memberMapper.toDto(saved);

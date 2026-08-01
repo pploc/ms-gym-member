@@ -25,7 +25,7 @@ CREATE TABLE members (
     full_name VARCHAR(255) NOT NULL,
     phone VARCHAR(50),
     avatar_url TEXT,
-    emergency_contact VARCHAR(255),
+    date_of_birth DATE,
     status VARCHAR(50) NOT NULL DEFAULT 'NONE',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -84,7 +84,7 @@ class MemberGrpcHandlerUnitTest {
         gymId = UUID.randomUUID();
         chainId = UUID.randomUUID();
 
-        memberDto = new MemberDto(memberId, userId, gymId, "John Doe", "123456", "http://avatar", "98765", MembershipStatus.ACTIVE, null, null);
+        memberDto = new MemberDto(memberId, userId, gymId, "John Doe", "123456", "http://avatar", LocalDate.of(1995, 5, 15), MembershipStatus.ACTIVE, null, null);
     }
 
     @Test

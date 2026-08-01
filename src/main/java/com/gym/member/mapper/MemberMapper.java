@@ -8,6 +8,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -23,7 +24,7 @@ public interface MemberMapper {
     @Mapping(target = "gymId", source = "gymId", qualifiedByName = "uuidToString")
     @Mapping(target = "phone", source = "phone", defaultValue = "")
     @Mapping(target = "avatarUrl", source = "avatarUrl", defaultValue = "")
-    @Mapping(target = "emergencyContact", source = "emergencyContact", defaultValue = "")
+    @Mapping(target = "dateOfBirth", source = "dateOfBirth", qualifiedByName = "dateToString")
     @Mapping(target = "status", expression = "java(dto.status() != null ? dto.status().name() : \"\")")
     MemberResponse toResponse(MemberDto dto);
 
@@ -35,5 +36,10 @@ public interface MemberMapper {
     @Named("uuidToString")
     default String uuidToString(UUID uuid) {
         return uuid != null ? uuid.toString() : "";
+    }
+
+    @Named("dateToString")
+    default String dateToString(LocalDate date) {
+        return date != null ? date.toString() : "";
     }
 }

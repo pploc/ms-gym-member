@@ -65,12 +65,14 @@ public class TestEventSeeder {
             producer.send(regRecord).get();
             System.out.println("Published identity.user.registered event for user_id: " + testUserId);
 
+            String testPlanId = "44444444-4444-4444-4444-444444444444";
+
             // 2. Seed PaymentCompletedEvent -> payment.completed
             PaymentCompletedEvent paymentEvent = PaymentCompletedEvent.newBuilder()
                     .setPaymentId(UUID.randomUUID().toString())
                     .setUserId(testUserId)
                     .setType("MEMBERSHIP")
-                    .setReferenceId(UUID.randomUUID().toString()) // planId
+                    .setReferenceId(testPlanId) // planId
                     .setAmountVnd(500000)
                     .setProvider("MOMO")
                     .setGymId(testGymId)

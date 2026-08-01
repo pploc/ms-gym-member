@@ -7,6 +7,7 @@ import com.gym.member.application.service.GymLocationService;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.application.service.MemberService;
 import com.gym.member.application.service.SubscriptionService;
+import java.time.LocalDate;
 import com.gym.member.domain.dto.GymDailySecretDto;
 import com.gym.member.domain.dto.GymLocationDto;
 import com.gym.member.domain.dto.MemberDto;
@@ -96,12 +97,15 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     @Override
     public void updateProfile(UpdateProfileRequest request, StreamObserver<MemberResponse> responseObserver) {
         try {
+            LocalDate dateOfBirth = (request.getDateOfBirth() != null && !request.getDateOfBirth().isBlank())
+                    ? LocalDate.parse(request.getDateOfBirth())
+                    : null;
             MemberDto dto = memberService.updateProfile(
                     request.getMemberId(),
                     request.getFullName(),
                     request.getPhone(),
                     request.getAvatarUrl(),
-                    request.getEmergencyContact()
+                    dateOfBirth
             );
             responseObserver.onNext(memberMapper.toResponse(dto));
             responseObserver.onCompleted();
