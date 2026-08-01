@@ -8,7 +8,7 @@ on:
 
 jobs:
   java-ci:
-    uses: pploc/gym-infra/.github/workflows/reusable-java-ci.yml@main
+    uses: pploc/gym-infra/.github/workflows/reusable-java-ci.yml@develop
     with:
       service_path: '.'
     secrets: inherit
@@ -16,7 +16,7 @@ jobs:
   docker-build:
     needs: java-ci
     if: github.event_name == 'push'
-    uses: pploc/gym-infra/.github/workflows/reusable-docker-build.yml@main
+    uses: pploc/gym-infra/.github/workflows/reusable-docker-build.yml@develop
     with:
       service_name: 'ms-gym-member'
       context: '.'
