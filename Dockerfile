@@ -1,6 +1,11 @@
 FROM eclipse-temurin:26-jdk-alpine AS builder
 
 WORKDIR /app
+ARG GITHUB_ACTOR
+ARG GITHUB_TOKEN
+ENV GITHUB_ACTOR=${GITHUB_ACTOR}
+ENV GITHUB_TOKEN=${GITHUB_TOKEN}
+
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle/ gradle/
 COPY src/ src/
