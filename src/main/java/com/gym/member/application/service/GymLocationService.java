@@ -9,6 +9,7 @@ import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepositor
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.domain.dto.GymLocationDto;
 import com.gym.member.domain.dto.PlanDto;
+import com.gym.member.mapper.GymLocationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class GymLocationService {
     private final GymLocationJpaRepository gymLocationRepository;
     private final GymQRSecretJpaRepository qrSecretRepository;
     private final MembershipPlanJpaRepository planRepository;
+    private final GymLocationMapper gymLocationMapper;
 
     @Transactional
     public GymLocationDto createGymLocation(String chainId, String name, String address, String city) {
@@ -43,7 +45,7 @@ public class GymLocationService {
         secretEntity.setUpdatedAt(Instant.now());
         qrSecretRepository.save(secretEntity);
 
-        return toDto(saved);
+        return gymLocationMapper.toDto(saved);
     }
 
     @Transactional
@@ -57,14 +59,14 @@ public class GymLocationService {
         if (status != null && !status.isBlank()) entity.setStatus(status);
 
         GymLocationEntity saved = gymLocationRepository.save(entity);
-        return toDto(saved);
+        return gymLocationMapper.toDto(saved);
     }
 
     @Transactional(readOnly = true)
     public GymLocationDto getGymLocation(String id) {
         GymLocationEntity entity = gymLocationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Gym location not found: " + id));
-        return toDto(entity);
+        return gymLocationMapper.toDto(entity);
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +77,7 @@ public class GymLocationService {
         } else {
             entities = gymLocationRepository.findAll();
         }
-        return entities.stream().map(this::toDto).toList();
+        return entities.stream().map(gymLocationMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
@@ -86,26 +88,6 @@ public class GymLocationService {
         } else {
             plans = planRepository.findAll();
         }
-        return plans.stream().map(p -> new PlanDto(
-                UUID.fromString(p.getId()),
-                UUID.fromString(p.getGymId()),
-                p.getName(),
-                p.getPlanType(),
-                p.getDurationDays(),
-                p.getPriceVnd(),
-                p.getDescription(),
-                p.isActive()
-        )).toList();
-    }
-
-    public GymLocationDto toDto(GymLocationEntity entity) {
-        return new GymLocationDto(
-                UUID.fromString(entity.getId()),
-                UUID.fromString(entity.getChainId()),
-                entity.getName(),
-                entity.getAddress(),
-                entity.getCity(),
-                entity.getStatus()
-        );
+        return plans.stream().map(gymLocationMapper::toPlanDto).toList();
     }
 }

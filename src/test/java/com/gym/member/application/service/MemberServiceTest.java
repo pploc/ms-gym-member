@@ -27,6 +27,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.gym.member.mapper.MemberMapper;
+import org.mapstruct.factory.Mappers;
+import org.mockito.Spy;
+
 @ExtendWith(MockitoExtension.class)
 class MemberServiceTest {
 
@@ -35,6 +39,9 @@ class MemberServiceTest {
 
     @Mock
     private GymLocationJpaRepository gymLocationRepository;
+
+    @Spy
+    private MemberMapper memberMapper = Mappers.getMapper(MemberMapper.class);
 
     @InjectMocks
     private MemberService memberService;

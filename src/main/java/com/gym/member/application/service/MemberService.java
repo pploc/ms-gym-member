@@ -8,6 +8,7 @@ import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepositor
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.domain.dto.MemberDto;
 import com.gym.member.domain.model.MembershipStatus;
+import com.gym.member.mapper.MemberMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,25 +24,26 @@ public class MemberService {
 
     private final MemberJpaRepository memberRepository;
     private final GymLocationJpaRepository gymLocationRepository;
+    private final MemberMapper memberMapper;
 
     @Transactional(readOnly = true)
     public MemberDto getMember(String memberId) {
         MemberEntity entity = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found with id: " + memberId));
-        return toDto(entity);
+        return memberMapper.toDto(entity);
     }
 
     @Transactional(readOnly = true)
     public MemberDto getMemberByUserId(String userId) {
         MemberEntity entity = memberRepository.findByUserId(userId)
                 .orElseThrow(() -> new NotFoundException("Member not found for user: " + userId));
-        return toDto(entity);
+        return memberMapper.toDto(entity);
     }
 
     @Transactional
     public MemberDto createMemberShell(String userId, String fullName, String gymId) {
         if (memberRepository.findByUserId(userId).isPresent()) {
-            return toDto(memberRepository.findByUserId(userId).get());
+            return memberMapper.toDto(memberRepository.findByUserId(userId).get());
         }
 
         // If gymId is null or invalid, pick a default active gym location
@@ -62,7 +64,7 @@ public class MemberService {
         entity.setStatus(MembershipStatus.NONE);
 
         MemberEntity saved = memberRepository.save(entity);
-        return toDto(saved);
+        return memberMapper.toDto(saved);
     }
 
     @Transactional
@@ -76,7 +78,7 @@ public class MemberService {
         if (emergencyContact != null) entity.setEmergencyContact(emergencyContact);
 
         MemberEntity saved = memberRepository.save(entity);
-        return toDto(saved);
+        return memberMapper.toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -90,7 +92,7 @@ public class MemberService {
             memberPage = memberRepository.findAll(pageRequest);
         }
         return new NormalPage<>(
-                memberPage.getContent().stream().map(this::toDto).toList(),
+                memberPage.getContent().stream().map(memberMapper::toDto).toList(),
                 memberPage.getNumber(),
                 memberPage.getSize(),
                 memberPage.getTotalElements(),
@@ -106,21 +108,6 @@ public class MemberService {
         } else {
             entities = memberRepository.findByStatus(status);
         }
-        return entities.stream().map(this::toDto).toList();
-    }
-
-    public MemberDto toDto(MemberEntity entity) {
-        return new MemberDto(
-                UUID.fromString(entity.getId()),
-                UUID.fromString(entity.getUserId()),
-                UUID.fromString(entity.getGymId()),
-                entity.getFullName(),
-                entity.getPhone(),
-                entity.getAvatarUrl(),
-                entity.getEmergencyContact(),
-                entity.getStatus(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
+        return entities.stream().map(memberMapper::toDto).toList();
     }
 }

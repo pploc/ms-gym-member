@@ -32,6 +32,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.gym.member.mapper.SubscriptionMapper;
+import org.mapstruct.factory.Mappers;
+import org.mockito.Spy;
+
 @ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTest {
 
@@ -49,6 +53,9 @@ class SubscriptionServiceTest {
 
     @Mock
     private MemberProperties memberProperties;
+
+    @Spy
+    private SubscriptionMapper subscriptionMapper = Mappers.getMapper(SubscriptionMapper.class);
 
     @InjectMocks
     private SubscriptionService subscriptionService;

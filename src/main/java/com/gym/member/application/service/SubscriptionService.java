@@ -8,11 +8,13 @@ import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.domain.exception.MaxPausesExceededException;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.member.domain.model.PlanType;
+import com.gym.member.mapper.SubscriptionMapper;
 import com.gym.proto.events.v1.MembershipActivatedEvent;
 import com.gym.proto.events.v1.MembershipExpiredEvent;
 import com.gym.proto.events.v1.MembershipExpiringSoonEvent;
@@ -29,9 +31,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
-import com.gym.member.config.MemberProperties;
 
 @Slf4j
 @Service
@@ -43,6 +42,7 @@ public class SubscriptionService {
     private final MembershipPlanJpaRepository planRepository;
     private final EventPublisher eventPublisher;
     private final MemberProperties memberProperties;
+    private final SubscriptionMapper subscriptionMapper;
 
     @Transactional
     public SubscriptionDto activateOrRenewSubscription(String memberId, String planId) {
@@ -101,7 +101,7 @@ public class SubscriptionService {
 
         eventPublisher.publish("membership.activated", member.getId(), event);
 
-        return toDto(savedSub);
+        return subscriptionMapper.toDto(savedSub);
     }
 
     @Transactional
@@ -148,7 +148,7 @@ public class SubscriptionService {
 
         eventPublisher.publish("membership.paused", member.getId(), event);
 
-        return toDto(savedSub);
+        return subscriptionMapper.toDto(savedSub);
     }
 
     @Transactional
@@ -182,7 +182,7 @@ public class SubscriptionService {
 
         eventPublisher.publish("membership.resumed", member.getId(), event);
 
-        return toDto(savedSub);
+        return subscriptionMapper.toDto(savedSub);
     }
 
     @Transactional(readOnly = true)
@@ -190,7 +190,7 @@ public class SubscriptionService {
         SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)
                 .or(() -> subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED))
                 .orElseThrow(() -> new NotFoundException("No active or paused subscription found for member: " + memberId));
-        return toDto(sub);
+        return subscriptionMapper.toDto(sub);
     }
 
     @Transactional
@@ -240,19 +240,5 @@ public class SubscriptionService {
                 eventPublisher.publish("membership.expiring-soon", member.getId(), event);
             }
         }
-    }
-
-    public SubscriptionDto toDto(SubscriptionEntity entity) {
-        return new SubscriptionDto(
-                UUID.fromString(entity.getId()),
-                UUID.fromString(entity.getMemberId()),
-                UUID.fromString(entity.getPlanId()),
-                entity.getStatus(),
-                entity.getStartDate(),
-                entity.getEndDate(),
-                entity.getPausedAt(),
-                entity.getRemainingDays(),
-                entity.getPauseCount()
-        );
     }
 }

@@ -31,6 +31,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.gym.member.mapper.GymLocationMapper;
+import com.gym.member.mapper.MemberMapper;
+import com.gym.member.mapper.SubscriptionMapper;
+import org.mapstruct.factory.Mappers;
+import org.mockito.Spy;
+
 @ExtendWith(MockitoExtension.class)
 class MemberGrpcHandlerTest {
 
@@ -48,6 +54,15 @@ class MemberGrpcHandlerTest {
 
     @Mock
     private StreamObserver responseObserver;
+
+    @Spy
+    private MemberMapper memberMapper = Mappers.getMapper(MemberMapper.class);
+
+    @Spy
+    private SubscriptionMapper subscriptionMapper = Mappers.getMapper(SubscriptionMapper.class);
+
+    @Spy
+    private GymLocationMapper gymLocationMapper = Mappers.getMapper(GymLocationMapper.class);
 
     @InjectMocks
     private MemberGrpcHandler memberGrpcHandler;

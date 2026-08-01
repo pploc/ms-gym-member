@@ -1,5 +1,8 @@
 package com.gym.member.adapter.in.grpc;
 
+import com.gym.common.error.DomainException;
+import com.gym.common.error.NotFoundException;
+import com.gym.common.pagination.NormalPage;
 import com.gym.member.application.service.GymLocationService;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.application.service.MemberService;
@@ -10,6 +13,9 @@ import com.gym.member.domain.dto.MemberDto;
 import com.gym.member.domain.dto.PlanDto;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.model.MembershipStatus;
+import com.gym.member.mapper.GymLocationMapper;
+import com.gym.member.mapper.MemberMapper;
+import com.gym.member.mapper.SubscriptionMapper;
 import com.gym.proto.member.v1.CreateGymLocationRequest;
 import com.gym.proto.member.v1.GetGymDailySecretRequest;
 import com.gym.proto.member.v1.GetGymLocationRequest;
@@ -37,9 +43,6 @@ import com.gym.proto.member.v1.UpdateGymLocationRequest;
 import com.gym.proto.member.v1.UpdateProfileRequest;
 import com.gym.proto.member.v1.ValidateMembershipRequest;
 import com.gym.proto.member.v1.ValidateMembershipResponse;
-import com.gym.common.error.DomainException;
-import com.gym.common.error.NotFoundException;
-import com.gym.common.pagination.NormalPage;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +60,10 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     private final SubscriptionService subscriptionService;
     private final GymLocationService gymLocationService;
     private final GymQRService gymQRService;
+
+    private final MemberMapper memberMapper;
+    private final SubscriptionMapper subscriptionMapper;
+    private final GymLocationMapper gymLocationMapper;
 
     private void handleError(StreamObserver<?> responseObserver, Exception e) {
         log.error("gRPC error: {}", e.getMessage(), e);
@@ -77,7 +84,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void getMember(GetMemberRequest request, StreamObserver<MemberResponse> responseObserver) {
         try {
             MemberDto dto = memberService.getMember(request.getMemberId());
-            responseObserver.onNext(toMemberResponse(dto));
+            responseObserver.onNext(memberMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -94,7 +101,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
                     request.getAvatarUrl(),
                     request.getEmergencyContact()
             );
-            responseObserver.onNext(toMemberResponse(dto));
+            responseObserver.onNext(memberMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -105,7 +112,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         try {
             NormalPage<MemberDto> page = memberService.listMembers(request.getGymId(), request.getPage(), request.getLimit());
-            List<MemberResponse> responses = page.items().stream().map(this::toMemberResponse).toList();
+            List<MemberResponse> responses = page.items().stream().map(memberMapper::toResponse).toList();
             ListMembersResponse response = ListMembersResponse.newBuilder()
                     .addAllMembers(responses)
                     .setTotal((int) page.totalRecords())
@@ -121,15 +128,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void getPlans(GetPlansRequest request, StreamObserver<PlansResponse> responseObserver) {
         try {
             List<PlanDto> plans = gymLocationService.getPlans(request.getGymId());
-            List<Plan> planProtos = plans.stream().map(p -> Plan.newBuilder()
-                    .setId(p.id().toString())
-                    .setName(p.name())
-                    .setPlanType(p.planType().name())
-                    .setDurationDays(p.durationDays() != null ? p.durationDays() : 0)
-                    .setPriceVnd(p.priceVnd())
-                    .setDescription(p.description() != null ? p.description() : "")
-                    .setActive(p.active())
-                    .build()).toList();
+            List<Plan> planProtos = plans.stream().map(gymLocationMapper::toPlanProto).toList();
 
             responseObserver.onNext(PlansResponse.newBuilder().addAllPlans(planProtos).build());
             responseObserver.onCompleted();
@@ -158,7 +157,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void pauseMembership(PauseMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
         try {
             SubscriptionDto dto = subscriptionService.pauseSubscription(request.getMemberId());
-            responseObserver.onNext(toMembershipResponse(dto));
+            responseObserver.onNext(subscriptionMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -169,7 +168,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void resumeMembership(ResumeMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
         try {
             SubscriptionDto dto = subscriptionService.resumeSubscription(request.getMemberId());
-            responseObserver.onNext(toMembershipResponse(dto));
+            responseObserver.onNext(subscriptionMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -180,7 +179,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void getMembershipStatus(GetMembershipStatusRequest request, StreamObserver<MembershipResponse> responseObserver) {
         try {
             SubscriptionDto dto = subscriptionService.getActiveSubscription(request.getMemberId());
-            responseObserver.onNext(toMembershipResponse(dto));
+            responseObserver.onNext(subscriptionMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -196,7 +195,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
                     request.getAddress(),
                     request.getCity()
             );
-            responseObserver.onNext(toGymLocationResponse(dto));
+            responseObserver.onNext(gymLocationMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -213,7 +212,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
                     request.getCity(),
                     request.getStatus()
             );
-            responseObserver.onNext(toGymLocationResponse(dto));
+            responseObserver.onNext(gymLocationMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -224,7 +223,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void listGymLocations(ListGymLocationsRequest request, StreamObserver<GymLocationsResponse> responseObserver) {
         try {
             List<GymLocationDto> dtos = gymLocationService.listGymLocations(request.getChainId());
-            List<GymLocationResponse> responses = dtos.stream().map(this::toGymLocationResponse).toList();
+            List<GymLocationResponse> responses = dtos.stream().map(gymLocationMapper::toResponse).toList();
             responseObserver.onNext(GymLocationsResponse.newBuilder().addAllLocations(responses).build());
             responseObserver.onCompleted();
         } catch (Exception e) {
@@ -236,7 +235,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void getGymLocation(GetGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         try {
             GymLocationDto dto = gymLocationService.getGymLocation(request.getId());
-            responseObserver.onNext(toGymLocationResponse(dto));
+            responseObserver.onNext(gymLocationMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
@@ -275,45 +274,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         try {
             MembershipStatus status = MembershipStatus.valueOf(request.getStatus());
             List<MemberDto> dtos = memberService.listMembersByStatus(status, request.getGymIdsList());
-            List<MemberResponse> responses = dtos.stream().map(this::toMemberResponse).toList();
+            List<MemberResponse> responses = dtos.stream().map(memberMapper::toResponse).toList();
             responseObserver.onNext(ListMembersByStatusResponse.newBuilder().addAllMembers(responses).build());
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
         }
-    }
-
-    private MemberResponse toMemberResponse(MemberDto dto) {
-        return MemberResponse.newBuilder()
-                .setId(dto.id().toString())
-                .setUserId(dto.userId().toString())
-                .setGymId(dto.gymId().toString())
-                .setFullName(dto.fullName())
-                .setPhone(dto.phone() != null ? dto.phone() : "")
-                .setAvatarUrl(dto.avatarUrl() != null ? dto.avatarUrl() : "")
-                .setEmergencyContact(dto.emergencyContact() != null ? dto.emergencyContact() : "")
-                .setStatus(dto.status().name())
-                .build();
-    }
-
-    private MembershipResponse toMembershipResponse(SubscriptionDto dto) {
-        return MembershipResponse.newBuilder()
-                .setMemberId(dto.memberId().toString())
-                .setStatus(dto.status().name())
-                .setStartDate(dto.startDate() != null ? dto.startDate().toString() : "")
-                .setEndDate(dto.endDate() != null ? dto.endDate().toString() : "")
-                .setRemainingDays(dto.remainingDays() != null ? dto.remainingDays() : 0)
-                .build();
-    }
-
-    private GymLocationResponse toGymLocationResponse(GymLocationDto dto) {
-        return GymLocationResponse.newBuilder()
-                .setId(dto.id().toString())
-                .setChainId(dto.chainId().toString())
-                .setName(dto.name())
-                .setAddress(dto.address())
-                .setCity(dto.city())
-                .setStatus(dto.status())
-                .build();
     }
 }
