@@ -107,6 +107,27 @@ class EventConsumerAdapterUnitTest {
     }
 
     @Test
+    void givenMemberServiceError_whenHandleUserRegistered_thenRethrowsExceptionForKafkaRetry() {
+        // Given
+        UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
+                .setUserId(userId)
+                .setFullName("John Doe")
+                .setGymId(gymId)
+                .build();
+
+        EventEnvelope<UserRegisteredEvent> envelope = new EventEnvelope<>(
+                "identity.user.registered", userId, payload, System.currentTimeMillis(), eventId, "user-service"
+        );
+
+        when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
+        doThrow(new RuntimeException("Database error")).when(memberService).createMemberShell(any(), any(), any());
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> adapter.handleUserRegistered(envelope, ack));
+        verify(ack, never()).acknowledge();
+    }
+
+    @Test
     void givenNewPaymentCompletedEvent_whenHandlePaymentCompleted_thenActivatesSubscriptionAndMarksProcessed() {
         // Given
         com.gym.member.domain.dto.MemberDto memberDto = new com.gym.member.domain.dto.MemberDto(
@@ -130,6 +151,52 @@ class EventConsumerAdapterUnitTest {
 
         // Then
         verify(subscriptionService, times(1)).activateOrRenewSubscription(eq(userId), any());
+        verify(idempotencyService, times(1)).markEventProcessed(eventId, "payment.completed");
+        verify(ack, times(1)).acknowledge();
+    }
+
+    @Test
+    void givenNonMembershipPayment_whenHandlePaymentCompleted_thenSkipsSubscriptionAndMarksProcessed() {
+        // Given
+        PaymentCompletedEvent payload = PaymentCompletedEvent.newBuilder()
+                .setUserId(userId)
+                .setType("MERCHANDISE")
+                .setReferenceId(UUID.randomUUID().toString())
+                .build();
+
+        EventEnvelope<PaymentCompletedEvent> envelope = new EventEnvelope<>(
+                "payment.completed", userId, payload, System.currentTimeMillis(), eventId, "payment-service"
+        );
+
+        when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
+
+        // When
+        adapter.handlePaymentCompleted(envelope, ack);
+
+        // Then
+        verify(subscriptionService, never()).activateOrRenewSubscription(any(), any());
+        verify(idempotencyService, times(1)).markEventProcessed(eventId, "payment.completed");
+        verify(ack, times(1)).acknowledge();
+    }
+
+    @Test
+    void givenMissingUserIdAndPlanId_whenHandlePaymentCompleted_thenSkipsActivationAndMarksProcessed() {
+        // Given
+        PaymentCompletedEvent payload = PaymentCompletedEvent.newBuilder()
+                .setType("MEMBERSHIP")
+                .build();
+
+        EventEnvelope<PaymentCompletedEvent> envelope = new EventEnvelope<>(
+                "payment.completed", "", payload, System.currentTimeMillis(), eventId, "payment-service"
+        );
+
+        when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
+
+        // When
+        adapter.handlePaymentCompleted(envelope, ack);
+
+        // Then
+        verify(subscriptionService, never()).activateOrRenewSubscription(any(), any());
         verify(idempotencyService, times(1)).markEventProcessed(eventId, "payment.completed");
         verify(ack, times(1)).acknowledge();
     }

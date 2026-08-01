@@ -1,5 +1,6 @@
 package com.gym.member.unit.service;
 
+import com.gym.common.error.NotFoundException;
 import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
@@ -154,6 +155,25 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
+    void givenMissingMember_whenActivateOrRenewSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.activateOrRenewSubscription(memberId, planId));
+    }
+
+    @Test
+    void givenMissingPlan_whenActivateOrRenewSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(planRepository.findById(planId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.activateOrRenewSubscription(memberId, planId));
+    }
+
+    @Test
     void givenActiveMonthlySubscription_whenPauseSubscription_thenPausesSubscriptionAndIncrementsPauseCount() {
         // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
@@ -171,6 +191,36 @@ class SubscriptionServiceUnitTest {
         assertEquals(MembershipStatus.PAUSED, result.status());
         assertEquals(1, result.pauseCount());
         verify(eventPublisher, times(1)).publish(eq("membership.paused"), eq(memberId), any());
+    }
+
+    @Test
+    void givenMissingMember_whenPauseSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.pauseSubscription(memberId));
+    }
+
+    @Test
+    void givenNoActiveSubscription_whenPauseSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.pauseSubscription(memberId));
+    }
+
+    @Test
+    void givenMissingPlan_whenPauseSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(planRepository.findById(planId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.pauseSubscription(memberId));
     }
 
     @Test
@@ -222,6 +272,25 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
+    void givenMissingMember_whenResumeSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.resumeSubscription(memberId));
+    }
+
+    @Test
+    void givenNoPausedSubscription_whenResumeSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.resumeSubscription(memberId));
+    }
+
+    @Test
     void givenActiveSubscription_whenGetActiveSubscription_thenReturnsSubscriptionDto() {
         // Given
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
@@ -232,6 +301,16 @@ class SubscriptionServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
+    }
+
+    @Test
+    void givenNoActiveOrPausedSubscription_whenGetActiveSubscription_thenThrowsNotFoundException() {
+        // Given
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> subscriptionService.getActiveSubscription(memberId));
     }
 
     @Test
