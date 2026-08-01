@@ -104,6 +104,9 @@ class MemberServiceTest {
 
     @Test
     void createMemberShell_existingMember() {
+        GymLocationEntity location = new GymLocationEntity();
+        location.setId(gymId);
+        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
 
         MemberDto dto = memberService.createMemberShell(userId, "John Doe", gymId);
@@ -114,6 +117,9 @@ class MemberServiceTest {
 
     @Test
     void createMemberShell_newMember_withGymId() {
+        GymLocationEntity location = new GymLocationEntity();
+        location.setId(gymId);
+        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(memberRepository.save(any())).thenAnswer(inv -> {
             MemberEntity entity = inv.getArgument(0);
@@ -131,44 +137,16 @@ class MemberServiceTest {
     }
 
     @Test
-    void createMemberShell_newMember_nullGymId_foundActiveLocation() {
-        GymLocationEntity location = new GymLocationEntity();
-        location.setId(gymId);
-        location.setStatus("ACTIVE");
-
-        when(memberRepository.findByUserId(userId)).thenReturn(Optional.empty());
-        when(gymLocationRepository.findByStatus("ACTIVE")).thenReturn(List.of(location));
-        when(memberRepository.save(any())).thenAnswer(inv -> {
-            MemberEntity entity = inv.getArgument(0);
-            entity.setId(memberId);
-            entity.setCreatedAt(Instant.now());
-            entity.setUpdatedAt(Instant.now());
-            return entity;
-        });
-
-        MemberDto dto = memberService.createMemberShell(userId, null, null);
-
-        assertNotNull(dto);
-        assertTrue(dto.fullName().startsWith("Member "));
-        assertEquals(gymId, dto.gymId().toString());
+    void createMemberShell_nullGymId_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "John Doe", null));
+        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "John Doe", "   "));
     }
 
     @Test
-    void createMemberShell_newMember_nullGymId_noActiveLocation() {
-        when(memberRepository.findByUserId(userId)).thenReturn(Optional.empty());
-        when(gymLocationRepository.findByStatus("ACTIVE")).thenReturn(List.of());
-        when(memberRepository.save(any())).thenAnswer(inv -> {
-            MemberEntity entity = inv.getArgument(0);
-            entity.setId(memberId);
-            entity.setCreatedAt(Instant.now());
-            entity.setUpdatedAt(Instant.now());
-            return entity;
-        });
+    void createMemberShell_invalidGymId_throwsNotFoundException() {
+        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.empty());
 
-        MemberDto dto = memberService.createMemberShell(userId, null, "");
-
-        assertNotNull(dto);
-        assertNotNull(dto.gymId());
+        assertThrows(NotFoundException.class, () -> memberService.createMemberShell(userId, "John Doe", gymId));
     }
 
     @Test

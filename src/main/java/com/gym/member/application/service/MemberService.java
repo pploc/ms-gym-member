@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -42,25 +41,21 @@ public class MemberService {
 
     @Transactional
     public MemberDto createMemberShell(String userId, String fullName, String gymId) {
+        if (gymId == null || gymId.isBlank()) {
+            throw new IllegalArgumentException("gymId is required and cannot be blank");
+        }
+
+        GymLocationEntity gymLocation = gymLocationRepository.findById(gymId)
+                .orElseThrow(() -> new NotFoundException("Gym location not found with id: " + gymId));
+
         if (memberRepository.findByUserId(userId).isPresent()) {
             return memberMapper.toDto(memberRepository.findByUserId(userId).get());
         }
 
-        // If gymId is null or invalid, pick a default active gym location
-        String targetGymId = gymId;
-        if (targetGymId == null || targetGymId.isBlank()) {
-            List<GymLocationEntity> locations = gymLocationRepository.findByStatus("ACTIVE");
-            if (!locations.isEmpty()) {
-                targetGymId = locations.get(0).getId();
-            } else {
-                targetGymId = UUID.randomUUID().toString();
-            }
-        }
-
         MemberEntity entity = new MemberEntity();
         entity.setUserId(userId);
-        entity.setGymId(targetGymId);
-        entity.setFullName(fullName != null ? fullName : "Member " + userId.substring(0, 8));
+        entity.setGymId(gymLocation.getId());
+        entity.setFullName(fullName != null && !fullName.isBlank() ? fullName : "Member " + userId.substring(0, Math.min(8, userId.length())));
         entity.setStatus(MembershipStatus.NONE);
 
         MemberEntity saved = memberRepository.save(entity);
