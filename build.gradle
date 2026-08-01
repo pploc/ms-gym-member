@@ -40,7 +40,7 @@ repositories {
 
 dependencies {
     implementation 'com.gym:common-java:1.0.1'
-    implementation 'com.gym.proto:gym-proto-java:1.0.0'
+    implementation 'com.gym.proto:gym-proto-java:1.0.2'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
