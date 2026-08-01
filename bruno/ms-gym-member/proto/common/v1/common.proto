@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/gym-chain/proto-go/common/v1;commonv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.common.v1";
+
+message Money {
+  string currency_code = 1; // "VND"
+  int64 units = 2;          // amount in integer
+  int32 nanos = 3;          // fraction of a unit
+}
+
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string cursor = 3; // cursor token for keyset pagination
+}
+
+message PaginationResponse {
+  int32 total_records = 1;
+  int32 total_pages = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+}

@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package checkin.v1;
+
+option go_package = "github.com/gym-chain/proto-go/checkin/v1;checkinv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.checkin.v1";
+
+service CheckInService {
+  rpc ProcessScan(ProcessScanRequest) returns (ProcessScanResponse);
+  rpc GetCheckInHistory(GetCheckInHistoryRequest) returns (CheckInHistoryResponse);
+  rpc GetDailyCount(GetDailyCountRequest) returns (DailyCountResponse);
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+}
+
+message ProcessScanRequest {
+  string member_id = 1;
+  string gym_id = 2;
+  string qr_payload = 3; // base64(gym_id:daily_token)
+}
+
+message ProcessScanResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetCheckInHistoryRequest {
+  string member_id = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message CheckInRecord {
+  string id = 1;
+  string member_id = 2;
+  string gym_id = 3;
+  string checked_in_at = 4;
+}
+
+message CheckInHistoryResponse {
+  repeated CheckInRecord records = 1;
+  int32 total = 2;
+}
+
+message GetDailyCountRequest {
+  string gym_id = 1;
+  string date = 2; // "2024-12-15"
+}
+
+message DailyCountResponse {
+  string gym_id = 1;
+  string date = 2;
+  int32 count = 3;
+}
+
+message RegisterDeviceRequest {
+  string gym_id = 1;
+  string device_name = 2;
+}
+
+message RegisterDeviceResponse {
+  string device_id = 1;
+  string api_secret = 2;
+}

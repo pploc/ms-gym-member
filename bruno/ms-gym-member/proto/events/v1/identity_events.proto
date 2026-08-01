@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "github.com/gym-chain/proto-go/events/v1;eventsv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.events.v1";
+
+message UserRegisteredEvent {
+  string user_id = 1;
+  string email = 2;
+  string full_name = 3;
+  string role = 4;
+  string gym_id = 5;
+  string auth_provider = 6;
+  int64 timestamp = 7;
+}
+
+message UserSuspendedEvent {
+  string user_id = 1;
+  string role = 2;
+  string gym_id = 3;
+  int64 timestamp = 4;
+}
+
+message UserRoleChangedEvent {
+  string user_id = 1;
+  string old_role = 2;
+  string new_role = 3;
+  string gym_id = 4;
+  int64 timestamp = 5;
+}

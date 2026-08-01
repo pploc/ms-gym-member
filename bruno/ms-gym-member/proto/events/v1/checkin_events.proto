@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "github.com/gym-chain/proto-go/events/v1;eventsv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.events.v1";
+
+message CheckInRecordedEvent {
+  string member_id = 1;
+  string gym_id = 2;
+  string device_id = 3;
+  int64 checked_in_at = 4;
+}

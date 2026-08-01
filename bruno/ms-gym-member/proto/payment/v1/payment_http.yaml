@@ -1,0 +1,12 @@
+type: google.api.Service
+config_version: 3
+
+http:
+  rules:
+    - selector: payment.v1.PaymentService.InitiatePayment
+      post: /api/v1/payments/initiate
+      body: "*"
+    - selector: payment.v1.PaymentService.GetPaymentStatus
+      get: /api/v1/payments/{payment_id}
+    - selector: payment.v1.PaymentService.GetSpendingHistory
+      get: /api/v1/payments/history/{user_id}

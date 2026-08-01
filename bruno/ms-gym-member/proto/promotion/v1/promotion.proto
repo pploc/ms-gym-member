@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package promotion.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/gym-chain/proto-go/promotion/v1;promotionv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.promotion.v1";
+
+service PromotionService {
+  rpc CreatePromotion(CreatePromotionRequest) returns (PromotionResponse);
+  rpc UpdatePromotion(UpdatePromotionRequest) returns (PromotionResponse);
+  rpc DisablePromotion(DisablePromotionRequest) returns (PromotionResponse);
+  rpc PublishPromotion(PublishPromotionRequest) returns (google.protobuf.Empty);
+  rpc ListPromotions(ListPromotionsRequest) returns (PromotionsResponse);
+  rpc GetPromotionStats(GetPromotionStatsRequest) returns (PromotionStatsResponse);
+
+  rpc ValidateAndReserve(ValidateAndReserveRequest) returns (ValidateAndReserveResponse);
+  rpc ConfirmReservation(ConfirmReservationRequest) returns (google.protobuf.Empty);
+  rpc ReleaseReservation(ReleaseReservationRequest) returns (google.protobuf.Empty);
+
+  rpc CheckDiscountCode(CheckDiscountCodeRequest) returns (DiscountInfoResponse);
+}
+
+message CreatePromotionRequest {
+  string name = 1;
+  string description = 2;
+  string code = 3;
+  int32 discount_percentage = 4;
+  string start_date = 5; // "2024-12-01"
+  string end_date = 6;   // "2024-12-31"
+  int32 max_usage = 7;
+  int32 per_user_limit = 8;
+  repeated string target_gym_ids = 9;
+}
+
+message PromotionResponse {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string code = 4;
+  int32 discount_percentage = 5;
+  string start_date = 6;
+  string end_date = 7;
+  int32 max_usage = 8;
+  int32 current_usage = 9;
+  int32 per_user_limit = 10;
+  repeated string target_gym_ids = 11;
+  string status = 12; // DRAFT, ACTIVE, EXPIRED, DISABLED
+}
+
+message UpdatePromotionRequest {
+  string promotion_id = 1;
+  string name = 2;
+  string description = 3;
+  int32 discount_percentage = 4;
+  string start_date = 5;
+  string end_date = 6;
+  int32 max_usage = 7;
+  int32 per_user_limit = 8;
+  repeated string target_gym_ids = 9;
+}
+
+message DisablePromotionRequest {
+  string promotion_id = 1;
+}
+
+message PublishPromotionRequest {
+  string promotion_id = 1;
+}
+
+message ListPromotionsRequest {
+  string gym_id = 1;
+}
+
+message PromotionsResponse {
+  repeated PromotionResponse promotions = 1;
+}
+
+message GetPromotionStatsRequest {
+  string promotion_id = 1;
+}
+
+message PromotionStatsResponse {
+  string promotion_id = 1;
+  int32 total_redeemed = 2;
+  int32 total_reserved = 3;
+  int64 total_saved_vnd = 4;
+}
+
+message ValidateAndReserveRequest {
+  string code = 1;
+  string user_id = 2;
+  string gym_id = 3;
+}
+
+message ValidateAndReserveResponse {
+  bool valid = 1;
+  int32 discount_percentage = 2;
+  string reservation_id = 3;
+  string reason = 4;
+}
+
+message ConfirmReservationRequest {
+  string reservation_id = 1;
+  string payment_id = 2;
+  int64 discount_amount_vnd = 3;
+}
+
+message ReleaseReservationRequest {
+  string reservation_id = 1;
+}
+
+message CheckDiscountCodeRequest {
+  string code = 1;
+  string gym_id = 2;
+}
+
+message DiscountInfoResponse {
+  bool valid = 1;
+  int32 discount_percentage = 2;
+  string description = 3;
+  string reason = 4;
+}

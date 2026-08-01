@@ -1,0 +1,19 @@
+type: google.api.Service
+config_version: 3
+
+http:
+  rules:
+    - selector: notification.v1.NotificationService.GetMyNotifications
+      get: /api/v1/notifications
+    - selector: notification.v1.NotificationService.MarkAsRead
+      post: /api/v1/notifications/{notification_id}/read
+    - selector: notification.v1.NotificationService.GetPreferences
+      get: /api/v1/notifications/preferences
+    - selector: notification.v1.NotificationService.UpdatePreferences
+      put: /api/v1/notifications/preferences
+      body: "*"
+    - selector: notification.v1.NotificationService.RegisterDevice
+      post: /api/v1/notifications/devices
+      body: "*"
+    - selector: notification.v1.NotificationService.UnregisterDevice
+      delete: /api/v1/notifications/devices/{device_id}

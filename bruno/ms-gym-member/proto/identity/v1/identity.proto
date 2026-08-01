@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package identity.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/gym-chain/proto-go/identity/v1;identityv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.identity.v1";
+
+service IdentityService {
+  rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc LoginWithGoogle(GoogleLoginRequest) returns (AuthResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (AuthResponse);
+  rpc Logout(LogoutRequest) returns (google.protobuf.Empty);
+
+  rpc GetCurrentUser(google.protobuf.Empty) returns (UserResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+
+  rpc CreateTrainerAccount(CreateTrainerRequest) returns (UserResponse);
+  rpc SuspendUser(SuspendUserRequest) returns (google.protobuf.Empty);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string full_name = 3;
+  string role = 4;
+  string gym_id = 5;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message GoogleLoginRequest {
+  string id_token = 1;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message LogoutRequest {
+  string access_token = 1;
+}
+
+message AuthResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int32 expires_in = 3;
+  string status = 4;
+}
+
+message UserResponse {
+  string id = 1;
+  string email = 2;
+  string role = 3;
+  string status = 4;
+  string full_name = 5;
+  string phone = 6;
+  string gym_id = 7;
+}
+
+message ChangePasswordRequest {
+  string old_password = 1;
+  string new_password = 2;
+}
+
+message CreateTrainerRequest {
+  string email = 1;
+  string temp_password = 2;
+  string gym_id = 3;
+}
+
+message SuspendUserRequest {
+  string user_id = 1;
+}
+
+message ListUsersRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string gym_id = 3;
+}
+
+message ListUsersResponse {
+  repeated UserResponse users = 1;
+  int32 total = 2;
+}

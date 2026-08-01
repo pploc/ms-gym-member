@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package events.v1;
+
+option go_package = "github.com/gym-chain/proto-go/events/v1;eventsv1";
+option java_multiple_files = true;
+option java_package = "com.gym.proto.events.v1";
+
+message PromotionPublishedEvent {
+  string promotion_id = 1;
+  string code = 2;
+  int32 percentage = 3;
+  repeated string target_gym_ids = 4;
+  string start_date = 5;
+  string end_date = 6;
+}

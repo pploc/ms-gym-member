@@ -1,0 +1,21 @@
+type: google.api.Service
+config_version: 3
+
+http:
+  rules:
+    - selector: analytics.v1.AnalyticsService.GetDashboardSummary
+      get: /api/v1/analytics/dashboard
+    - selector: analytics.v1.AnalyticsService.GetDailyAttendance
+      get: /api/v1/analytics/attendance
+    - selector: analytics.v1.AnalyticsService.GetAttendanceTrend
+      get: /api/v1/analytics/attendance/trend
+    - selector: analytics.v1.AnalyticsService.GetMembershipStats
+      get: /api/v1/analytics/membership-stats
+    - selector: analytics.v1.AnalyticsService.GetInactiveMembers
+      get: /api/v1/analytics/inactive-members
+    - selector: analytics.v1.AnalyticsService.GetRevenueReport
+      get: /api/v1/analytics/revenue
+    - selector: analytics.v1.AnalyticsService.GetRevenueComparison
+      get: /api/v1/analytics/revenue/comparison
+    - selector: analytics.v1.AnalyticsService.GetTrainerUtilization
+      get: /api/v1/analytics/trainer-utilization/{trainer_id}
