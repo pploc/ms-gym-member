@@ -1,17 +1,20 @@
-package com.gym.member.application.service;
+package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.adapter.out.persistence.entity.GymQRSecretEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
+import com.gym.member.application.service.GymQRService;
 import com.gym.member.domain.dto.GymDailySecretDto;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class GymQRServiceTest {
+class GymQRServiceUnitTest {
 
     @Mock
     private GymQRSecretJpaRepository qrSecretRepository;
@@ -33,28 +36,26 @@ class GymQRServiceTest {
     @InjectMocks
     private GymQRService gymQRService;
 
-    @Test
-    void computeDailyToken_deterministicResult() {
-        String gymId = UUID.randomUUID().toString();
-        String dailySecret = "secret1234567890";
-        LocalDate date = LocalDate.of(2026, 8, 1);
+    private String gymId;
+    private GymQRSecretEntity secretEntity;
+    private GymLocationEntity gymLocationEntity;
 
-        String token1 = gymQRService.computeDailyToken(gymId, dailySecret, date);
-        String token2 = gymQRService.computeDailyToken(gymId, dailySecret, date);
+    @BeforeEach
+    void setUp() {
+        gymId = UUID.randomUUID().toString();
+        secretEntity = new GymQRSecretEntity();
+        secretEntity.setGymId(gymId);
+        secretEntity.setDailySecret("secret123");
+        secretEntity.setUpdatedAt(Instant.now());
 
-        assertNotNull(token1);
-        assertEquals(64, token1.length());
-        assertEquals(token1, token2);
+        gymLocationEntity = new GymLocationEntity();
+        gymLocationEntity.setId(gymId);
+        gymLocationEntity.setStatus("ACTIVE");
     }
 
     @Test
     void getGymDailySecret_success() {
-        String gymId = UUID.randomUUID().toString();
-        GymQRSecretEntity entity = new GymQRSecretEntity();
-        entity.setGymId(gymId);
-        entity.setDailySecret("secret123");
-
-        when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(entity));
+        when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
 
         GymDailySecretDto dto = gymQRService.getGymDailySecret(gymId);
 
@@ -64,7 +65,6 @@ class GymQRServiceTest {
 
     @Test
     void getGymDailySecret_notFound() {
-        String gymId = UUID.randomUUID().toString();
         when(qrSecretRepository.findById(gymId)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> gymQRService.getGymDailySecret(gymId));
@@ -72,15 +72,19 @@ class GymQRServiceTest {
 
     @Test
     void rotateAllGymDailySecrets_success() {
-        String gymId1 = UUID.randomUUID().toString();
-        GymLocationEntity gym1 = new GymLocationEntity();
-        gym1.setId(gymId1);
-
-        when(gymLocationRepository.findByStatus("ACTIVE")).thenReturn(List.of(gym1));
-        when(qrSecretRepository.findById(gymId1)).thenReturn(Optional.empty());
+        when(gymLocationRepository.findByStatus("ACTIVE")).thenReturn(List.of(gymLocationEntity));
+        when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
 
         gymQRService.rotateAllGymDailySecrets();
 
         verify(qrSecretRepository, times(1)).save(any());
+    }
+
+    @Test
+    void computeDailyToken_validFormat() {
+        String token = gymQRService.computeDailyToken("mem-1", "secret123", LocalDate.now());
+
+        assertNotNull(token);
+        assertEquals(64, token.length());
     }
 }

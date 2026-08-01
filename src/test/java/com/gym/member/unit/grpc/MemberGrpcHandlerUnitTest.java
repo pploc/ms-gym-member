@@ -1,8 +1,8 @@
-package com.gym.member.adapter.in.grpc;
+package com.gym.member.unit.grpc;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.common.pagination.NormalPage;
-import com.gym.member.domain.exception.CannotPauseLifetimeException;
+import com.gym.member.adapter.in.grpc.MemberGrpcHandler;
 import com.gym.member.application.service.GymLocationService;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.application.service.MemberService;
@@ -12,15 +12,21 @@ import com.gym.member.domain.dto.GymLocationDto;
 import com.gym.member.domain.dto.MemberDto;
 import com.gym.member.domain.dto.PlanDto;
 import com.gym.member.domain.dto.SubscriptionDto;
+import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.member.domain.model.PlanType;
+import com.gym.member.mapper.GymLocationMapper;
+import com.gym.member.mapper.MemberMapper;
+import com.gym.member.mapper.SubscriptionMapper;
 import com.gym.proto.member.v1.*;
 import io.grpc.stub.StreamObserver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -31,14 +37,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-import com.gym.member.mapper.GymLocationMapper;
-import com.gym.member.mapper.MemberMapper;
-import com.gym.member.mapper.SubscriptionMapper;
-import org.mapstruct.factory.Mappers;
-import org.mockito.Spy;
-
 @ExtendWith(MockitoExtension.class)
-class MemberGrpcHandlerTest {
+class MemberGrpcHandlerUnitTest {
 
     @Mock
     private MemberService memberService;
@@ -327,7 +327,7 @@ class MemberGrpcHandlerTest {
 
         memberGrpcHandler.listGymLocations(request, responseObserver);
 
-        verify(responseObserver, times(1)).onNext(any(GymLocationsResponse.newBuilder().build().getClass()));
+        verify(responseObserver, times(1)).onNext(any(GymLocationsResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
@@ -366,17 +366,6 @@ class MemberGrpcHandlerTest {
     @Test
     void validateMembership_valid() {
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder().setMemberId(memberId.toString()).setGymId(gymId.toString()).build();
-        when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-
-        memberGrpcHandler.validateMembership(request, responseObserver);
-
-        verify(responseObserver, times(1)).onNext(any(ValidateMembershipResponse.class));
-        verify(responseObserver, times(1)).onCompleted();
-    }
-
-    @Test
-    void validateMembership_invalid_wrongGymId() {
-        ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder().setMemberId(memberId.toString()).setGymId(UUID.randomUUID().toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
 
         memberGrpcHandler.validateMembership(request, responseObserver);

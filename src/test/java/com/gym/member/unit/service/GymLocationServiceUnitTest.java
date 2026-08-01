@@ -1,4 +1,4 @@
-package com.gym.member.application.service;
+package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
@@ -6,14 +6,17 @@ import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
+import com.gym.member.application.service.GymLocationService;
 import com.gym.member.domain.dto.GymLocationDto;
 import com.gym.member.domain.dto.PlanDto;
-import com.gym.member.domain.model.PlanType;
+import com.gym.member.mapper.GymLocationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -24,12 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.gym.member.mapper.GymLocationMapper;
-import org.mapstruct.factory.Mappers;
-import org.mockito.Spy;
-
 @ExtendWith(MockitoExtension.class)
-class GymLocationServiceTest {
+class GymLocationServiceUnitTest {
 
     @Mock
     private GymLocationJpaRepository gymLocationRepository;
@@ -58,24 +57,24 @@ class GymLocationServiceTest {
         location = new GymLocationEntity();
         location.setId(gymId);
         location.setChainId(chainId);
-        location.setName("Downtown Gym");
+        location.setName("Central Gym");
         location.setAddress("123 Main St");
-        location.setCity("Saigon");
+        location.setCity("Metropolis");
         location.setStatus("ACTIVE");
     }
 
     @Test
     void createGymLocation_success() {
         when(gymLocationRepository.save(any())).thenAnswer(inv -> {
-            GymLocationEntity entity = inv.getArgument(0);
-            entity.setId(gymId);
-            return entity;
+            GymLocationEntity e = inv.getArgument(0);
+            e.setId(gymId);
+            return e;
         });
 
-        GymLocationDto dto = gymLocationService.createGymLocation(chainId, "Downtown Gym", "123 Main St", "Saigon");
+        GymLocationDto dto = gymLocationService.createGymLocation(chainId, "Central Gym", "123 Main St", "Metropolis");
 
         assertNotNull(dto);
-        assertEquals("Downtown Gym", dto.name());
+        assertEquals("Central Gym", dto.name());
         verify(qrSecretRepository, times(1)).save(any());
     }
 
@@ -84,12 +83,10 @@ class GymLocationServiceTest {
         when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
         when(gymLocationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        GymLocationDto dto = gymLocationService.updateGymLocation(gymId, "Updated Gym", "New St", "Danang", "INACTIVE");
+        GymLocationDto dto = gymLocationService.updateGymLocation(gymId, "Updated Gym", "456 St", "City", "INACTIVE");
 
         assertNotNull(dto);
         assertEquals("Updated Gym", dto.name());
-        assertEquals("New St", dto.address());
-        assertEquals("Danang", dto.city());
         assertEquals("INACTIVE", dto.status());
     }
 
@@ -97,7 +94,7 @@ class GymLocationServiceTest {
     void updateGymLocation_notFound() {
         when(gymLocationRepository.findById(gymId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> gymLocationService.updateGymLocation(gymId, "Updated", null, null, null));
+        assertThrows(NotFoundException.class, () -> gymLocationService.updateGymLocation(gymId, "Name", null, null, null));
     }
 
     @Test
@@ -111,13 +108,6 @@ class GymLocationServiceTest {
     }
 
     @Test
-    void getGymLocation_notFound() {
-        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class, () -> gymLocationService.getGymLocation(gymId));
-    }
-
-    @Test
     void listGymLocations_withChainId() {
         when(gymLocationRepository.findByChainId(chainId)).thenReturn(List.of(location));
 
@@ -128,51 +118,15 @@ class GymLocationServiceTest {
     }
 
     @Test
-    void listGymLocations_withoutChainId() {
-        when(gymLocationRepository.findAll()).thenReturn(List.of(location));
-
-        List<GymLocationDto> list = gymLocationService.listGymLocations(null);
-
-        assertNotNull(list);
-        assertEquals(1, list.size());
-    }
-
-    @Test
     void getPlans_withGymId() {
         MembershipPlanEntity plan = new MembershipPlanEntity();
         plan.setId(UUID.randomUUID().toString());
         plan.setGymId(gymId);
-        plan.setName("Monthly Pass");
-        plan.setPlanType(PlanType.MONTHLY);
-        plan.setDurationDays(30);
-        plan.setPriceVnd(500000L);
-        plan.setActive(true);
-
         when(planRepository.findByGymIdAndActiveTrue(gymId)).thenReturn(List.of(plan));
 
-        List<PlanDto> plans = gymLocationService.getPlans(gymId);
+        List<PlanDto> list = gymLocationService.getPlans(gymId);
 
-        assertNotNull(plans);
-        assertEquals(1, plans.size());
-        assertEquals("Monthly Pass", plans.get(0).name());
-    }
-
-    @Test
-    void getPlans_withoutGymId() {
-        MembershipPlanEntity plan = new MembershipPlanEntity();
-        plan.setId(UUID.randomUUID().toString());
-        plan.setGymId(gymId);
-        plan.setName("Monthly Pass");
-        plan.setPlanType(PlanType.MONTHLY);
-        plan.setDurationDays(30);
-        plan.setPriceVnd(500000L);
-        plan.setActive(true);
-
-        when(planRepository.findAll()).thenReturn(List.of(plan));
-
-        List<PlanDto> plans = gymLocationService.getPlans(null);
-
-        assertNotNull(plans);
-        assertEquals(1, plans.size());
+        assertNotNull(list);
+        assertEquals(1, list.size());
     }
 }

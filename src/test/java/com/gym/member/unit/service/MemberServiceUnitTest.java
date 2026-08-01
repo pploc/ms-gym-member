@@ -1,4 +1,4 @@
-package com.gym.member.application.service;
+package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.common.pagination.NormalPage;
@@ -6,13 +6,17 @@ import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
+import com.gym.member.application.service.MemberService;
 import com.gym.member.domain.dto.MemberDto;
 import com.gym.member.domain.model.MembershipStatus;
+import com.gym.member.mapper.MemberMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -25,14 +29,11 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-import com.gym.member.mapper.MemberMapper;
-import org.mapstruct.factory.Mappers;
-import org.mockito.Spy;
-
 @ExtendWith(MockitoExtension.class)
-class MemberServiceTest {
+class MemberServiceUnitTest {
 
     @Mock
     private MemberJpaRepository memberRepository;
