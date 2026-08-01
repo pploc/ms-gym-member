@@ -80,7 +80,8 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public Page<MemberDto> listMembers(String gymId, int page, int limit) {
-        PageRequest pageRequest = PageRequest.of(page, Math.min(limit, 100));
+        int pageSize = limit > 0 ? Math.min(limit, 100) : 10;
+        PageRequest pageRequest = PageRequest.of(Math.max(0, page), pageSize);
         Page<MemberEntity> memberPage;
         if (gymId != null && !gymId.isBlank()) {
             memberPage = memberRepository.findByGymId(gymId, pageRequest);
