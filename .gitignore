@@ -6,10 +6,10 @@
 *.swo
 
 # Build & Output
-target/
-build/
-.gradle/
-out/
+/target/
+/build/
+/.gradle/
+/out/
 *.class
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
