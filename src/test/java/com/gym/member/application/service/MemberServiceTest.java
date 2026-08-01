@@ -1,6 +1,7 @@
 package com.gym.member.application.service;
 
 import com.gym.common.error.NotFoundException;
+import com.gym.common.pagination.NormalPage;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
@@ -189,10 +190,10 @@ class MemberServiceTest {
         Page<MemberEntity> page = new PageImpl<>(List.of(member));
         when(memberRepository.findByGymId(eq(gymId), any(PageRequest.class))).thenReturn(page);
 
-        Page<MemberDto> result = memberService.listMembers(gymId, 0, 10);
+        NormalPage<MemberDto> result = memberService.listMembers(gymId, 0, 10);
 
         assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.totalRecords());
     }
 
     @Test
@@ -200,10 +201,10 @@ class MemberServiceTest {
         Page<MemberEntity> page = new PageImpl<>(List.of(member));
         when(memberRepository.findAll(any(PageRequest.class))).thenReturn(page);
 
-        Page<MemberDto> result = memberService.listMembers(null, 0, 10);
+        NormalPage<MemberDto> result = memberService.listMembers(null, 0, 10);
 
         assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.totalRecords());
     }
 
     @Test

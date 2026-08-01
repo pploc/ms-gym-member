@@ -1,6 +1,7 @@
 package com.gym.member.adapter.in.grpc;
 
 import com.gym.common.error.NotFoundException;
+import com.gym.common.pagination.NormalPage;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.application.service.GymLocationService;
 import com.gym.member.application.service.GymQRService;
@@ -21,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -143,7 +143,8 @@ class MemberGrpcHandlerTest {
     @Test
     void listMembers_success() {
         ListMembersRequest request = ListMembersRequest.newBuilder().setGymId(gymId.toString()).setPage(0).setLimit(10).build();
-        when(memberService.listMembers(gymId.toString(), 0, 10)).thenReturn(new PageImpl<>(List.of(memberDto)));
+        NormalPage<MemberDto> normalPage = new NormalPage<>(List.of(memberDto), 0, 10, 1L, 1);
+        when(memberService.listMembers(gymId.toString(), 0, 10)).thenReturn(normalPage);
 
         memberGrpcHandler.listMembers(request, responseObserver);
 

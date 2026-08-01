@@ -1,6 +1,7 @@
 package com.gym.member.application.service;
 
 import com.gym.common.error.NotFoundException;
+import com.gym.common.pagination.NormalPage;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
@@ -79,7 +80,7 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MemberDto> listMembers(String gymId, int page, int limit) {
+    public NormalPage<MemberDto> listMembers(String gymId, int page, int limit) {
         int pageSize = limit > 0 ? Math.min(limit, 100) : 10;
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), pageSize);
         Page<MemberEntity> memberPage;
@@ -88,7 +89,13 @@ public class MemberService {
         } else {
             memberPage = memberRepository.findAll(pageRequest);
         }
-        return memberPage.map(this::toDto);
+        return new NormalPage<>(
+                memberPage.getContent().stream().map(this::toDto).toList(),
+                memberPage.getNumber(),
+                memberPage.getSize(),
+                memberPage.getTotalElements(),
+                memberPage.getTotalPages()
+        );
     }
 
     @Transactional(readOnly = true)

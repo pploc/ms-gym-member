@@ -39,6 +39,7 @@ import com.gym.proto.member.v1.ValidateMembershipRequest;
 import com.gym.proto.member.v1.ValidateMembershipResponse;
 import com.gym.common.error.DomainException;
 import com.gym.common.error.NotFoundException;
+import com.gym.common.pagination.NormalPage;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -103,11 +104,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     @Override
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         try {
-            var page = memberService.listMembers(request.getGymId(), request.getPage(), request.getLimit());
-            List<MemberResponse> responses = page.getContent().stream().map(this::toMemberResponse).toList();
+            NormalPage<MemberDto> page = memberService.listMembers(request.getGymId(), request.getPage(), request.getLimit());
+            List<MemberResponse> responses = page.items().stream().map(this::toMemberResponse).toList();
             ListMembersResponse response = ListMembersResponse.newBuilder()
                     .addAllMembers(responses)
-                    .setTotal((int) page.getTotalElements())
+                    .setTotal((int) page.totalRecords())
                     .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
