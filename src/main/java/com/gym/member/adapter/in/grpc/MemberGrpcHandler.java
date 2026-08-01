@@ -37,6 +37,9 @@ import com.gym.proto.member.v1.UpdateGymLocationRequest;
 import com.gym.proto.member.v1.UpdateProfileRequest;
 import com.gym.proto.member.v1.ValidateMembershipRequest;
 import com.gym.proto.member.v1.ValidateMembershipResponse;
+import com.gym.common.error.DomainException;
+import com.gym.common.error.NotFoundException;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +57,21 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     private final GymLocationService gymLocationService;
     private final GymQRService gymQRService;
 
+    private void handleError(StreamObserver<?> responseObserver, Exception e) {
+        log.error("gRPC error: {}", e.getMessage(), e);
+        Status status;
+        if (e instanceof NotFoundException) {
+            status = Status.NOT_FOUND.withDescription(e.getMessage());
+        } else if (e instanceof IllegalArgumentException) {
+            status = Status.INVALID_ARGUMENT.withDescription(e.getMessage());
+        } else if (e instanceof DomainException) {
+            status = Status.FAILED_PRECONDITION.withDescription(e.getMessage());
+        } else {
+            status = Status.INTERNAL.withDescription(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
+        responseObserver.onError(status.asRuntimeException());
+    }
+
     @Override
     public void getMember(GetMemberRequest request, StreamObserver<MemberResponse> responseObserver) {
         try {
@@ -61,7 +79,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toMemberResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -78,7 +96,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toMemberResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -94,7 +112,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -115,7 +133,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(PlansResponse.newBuilder().addAllPlans(planProtos).build());
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -131,7 +149,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -142,7 +160,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toMembershipResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -153,7 +171,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toMembershipResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -164,7 +182,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toMembershipResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -180,7 +198,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toGymLocationResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -197,7 +215,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toGymLocationResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -209,7 +227,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(GymLocationsResponse.newBuilder().addAllLocations(responses).build());
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -220,7 +238,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(toGymLocationResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -236,7 +254,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -247,7 +265,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(GymDailySecretResponse.newBuilder().setDailySecret(dto.dailySecret()).build());
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
@@ -260,7 +278,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
             responseObserver.onNext(ListMembersByStatusResponse.newBuilder().addAllMembers(responses).build());
             responseObserver.onCompleted();
         } catch (Exception e) {
-            responseObserver.onError(e);
+            handleError(responseObserver, e);
         }
     }
 
