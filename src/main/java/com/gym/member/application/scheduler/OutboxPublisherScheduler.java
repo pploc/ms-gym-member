@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import com.gym.member.adapter.out.persistence.specification.OutboxEventSpecifications;
+import org.springframework.data.domain.Sort;
+
 @Slf4j
 @Component
 @EnableScheduling
@@ -22,7 +25,10 @@ public class OutboxPublisherScheduler {
     @Scheduled(fixedDelay = 2000)
     @Transactional
     public void processOutboxEvents() {
-        List<OutboxEventEntity> pending = outboxRepository.findPendingEvents();
+        List<OutboxEventEntity> pending = outboxRepository.findAll(
+                OutboxEventSpecifications.isPending(),
+                Sort.by(Sort.Direction.ASC, "createdAt")
+        );
         if (pending.isEmpty()) {
             return;
         }

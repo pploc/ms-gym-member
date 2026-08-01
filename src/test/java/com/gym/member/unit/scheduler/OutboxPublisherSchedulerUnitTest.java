@@ -16,6 +16,9 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+
 @ExtendWith(MockitoExtension.class)
 class OutboxPublisherSchedulerUnitTest {
 
@@ -40,7 +43,7 @@ class OutboxPublisherSchedulerUnitTest {
     @Test
     void givenPendingOutboxEvents_whenProcessOutboxEvents_thenSavesPublishedStatus() {
         // Given
-        when(outboxRepository.findPendingEvents()).thenReturn(List.of(outboxEvent));
+        when(outboxRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(outboxEvent));
 
         // When
         scheduler.processOutboxEvents();
@@ -52,7 +55,7 @@ class OutboxPublisherSchedulerUnitTest {
     @Test
     void givenSaveFailure_whenProcessOutboxEvents_thenSetsStatusToFailedAndSaves() {
         // Given
-        when(outboxRepository.findPendingEvents()).thenReturn(List.of(outboxEvent));
+        when(outboxRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(outboxEvent));
         when(outboxRepository.save(outboxEvent))
                 .thenThrow(new RuntimeException("DB Save Error"))
                 .thenReturn(outboxEvent);

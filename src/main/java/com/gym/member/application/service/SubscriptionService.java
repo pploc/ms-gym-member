@@ -8,6 +8,7 @@ import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.adapter.out.persistence.specification.SubscriptionSpecifications;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
@@ -196,7 +197,9 @@ public class SubscriptionService {
     @Transactional
     public void processExpiredSubscriptions() {
         LocalDate today = LocalDate.now();
-        List<SubscriptionEntity> expiredSubs = subscriptionRepository.findExpiredActiveSubscriptions(today);
+        List<SubscriptionEntity> expiredSubs = subscriptionRepository.findAll(
+                SubscriptionSpecifications.isExpiredActive(today)
+        );
         for (SubscriptionEntity sub : expiredSubs) {
             sub.setStatus(MembershipStatus.EXPIRED);
             subscriptionRepository.save(sub);
@@ -222,7 +225,9 @@ public class SubscriptionService {
     public void processExpiringSoonWarnings() {
         int warningDays = memberProperties.subscription().warningNoticeDays();
         LocalDate warningDate = LocalDate.now().plusDays(warningDays);
-        List<SubscriptionEntity> warningSubs = subscriptionRepository.findExpiringSoonSubscriptions(warningDate);
+        List<SubscriptionEntity> warningSubs = subscriptionRepository.findAll(
+                SubscriptionSpecifications.isExpiringSoon(warningDate)
+        );
         for (SubscriptionEntity sub : warningSubs) {
             Optional<MemberEntity> memberOpt = memberRepository.findById(sub.getMemberId());
             Optional<MembershipPlanEntity> planOpt = planRepository.findById(sub.getPlanId());

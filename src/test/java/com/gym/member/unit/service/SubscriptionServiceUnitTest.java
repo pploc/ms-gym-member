@@ -24,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -316,7 +317,7 @@ class SubscriptionServiceUnitTest {
     @Test
     void givenExpiredActiveSubscriptions_whenProcessExpiredSubscriptions_thenUpdatesStatusToExpiredAndPublishesEvent() {
         // Given
-        when(subscriptionRepository.findExpiredActiveSubscriptions(any())).thenReturn(List.of(activeSub));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
         // When
@@ -332,7 +333,7 @@ class SubscriptionServiceUnitTest {
         // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
-        when(subscriptionRepository.findExpiringSoonSubscriptions(any())).thenReturn(List.of(activeSub));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
 
