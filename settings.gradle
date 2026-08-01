@@ -1,0 +1,4 @@
+rootProject.name = 'ms-gym-member'
+
+includeBuild('../gym-proto')
+includeBuild('../common-java')

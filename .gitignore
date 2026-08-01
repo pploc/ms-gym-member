@@ -8,6 +8,7 @@
 # Build & Output
 target/
 build/
+.gradle/
 out/
 *.class
 *.jar
