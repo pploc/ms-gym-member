@@ -8,7 +8,12 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
   flyway:
     enabled: false
   kafka:
     bootstrap-servers: localhost:9092
+grpc:
+  server:
+    port: 0
