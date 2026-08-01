@@ -7,11 +7,14 @@ import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepositor
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.domain.dto.GymDailySecretDto;
+import com.gym.member.mapper.GymQRSecretMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
@@ -32,6 +35,9 @@ class GymQRServiceUnitTest {
 
     @Mock
     private GymLocationJpaRepository gymLocationRepository;
+
+    @Spy
+    private GymQRSecretMapper gymQRSecretMapper = Mappers.getMapper(GymQRSecretMapper.class);
 
     @InjectMocks
     private GymQRService gymQRService;

@@ -16,6 +16,7 @@ import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.member.domain.model.PlanType;
 import com.gym.member.mapper.GymLocationMapper;
+import com.gym.member.mapper.GymQRSecretMapper;
 import com.gym.member.mapper.MemberMapper;
 import com.gym.member.mapper.SubscriptionMapper;
 import com.gym.proto.member.v1.*;
@@ -63,6 +64,9 @@ class MemberGrpcHandlerUnitTest {
 
     @Spy
     private GymLocationMapper gymLocationMapper = Mappers.getMapper(GymLocationMapper.class);
+
+    @Spy
+    private GymQRSecretMapper gymQRSecretMapper = Mappers.getMapper(GymQRSecretMapper.class);
 
     @InjectMocks
     private MemberGrpcHandler memberGrpcHandler;

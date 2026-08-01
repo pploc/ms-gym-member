@@ -6,6 +6,7 @@ import com.gym.member.adapter.out.persistence.entity.GymQRSecretEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.domain.dto.GymDailySecretDto;
+import com.gym.member.mapper.GymQRSecretMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,12 +28,13 @@ public class GymQRService {
 
     private final GymQRSecretJpaRepository qrSecretRepository;
     private final GymLocationJpaRepository gymLocationRepository;
+    private final GymQRSecretMapper gymQRSecretMapper;
 
     @Transactional(readOnly = true)
     public GymDailySecretDto getGymDailySecret(String gymId) {
         GymQRSecretEntity entity = qrSecretRepository.findById(gymId)
                 .orElseThrow(() -> new NotFoundException("Gym QR secret not found for gymId: " + gymId));
-        return new GymDailySecretDto(UUID.fromString(entity.getGymId()), entity.getDailySecret());
+        return gymQRSecretMapper.toDto(entity);
     }
 
     @Transactional

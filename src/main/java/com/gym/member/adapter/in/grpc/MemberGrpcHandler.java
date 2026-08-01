@@ -14,6 +14,7 @@ import com.gym.member.domain.dto.PlanDto;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.member.mapper.GymLocationMapper;
+import com.gym.member.mapper.GymQRSecretMapper;
 import com.gym.member.mapper.MemberMapper;
 import com.gym.member.mapper.SubscriptionMapper;
 import com.gym.proto.member.v1.CreateGymLocationRequest;
@@ -64,6 +65,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     private final MemberMapper memberMapper;
     private final SubscriptionMapper subscriptionMapper;
     private final GymLocationMapper gymLocationMapper;
+    private final GymQRSecretMapper gymQRSecretMapper;
 
     private void handleError(StreamObserver<?> responseObserver, Exception e) {
         log.error("gRPC error: {}", e.getMessage(), e);
@@ -262,7 +264,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     public void getGymDailySecret(GetGymDailySecretRequest request, StreamObserver<GymDailySecretResponse> responseObserver) {
         try {
             GymDailySecretDto dto = gymQRService.getGymDailySecret(request.getGymId());
-            responseObserver.onNext(GymDailySecretResponse.newBuilder().setDailySecret(dto.dailySecret()).build());
+            responseObserver.onNext(gymQRSecretMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
