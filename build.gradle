@@ -77,7 +77,7 @@ jacocoTestCoverageVerification {
 
 tasks.register('startEnv', Exec) {
     group = 'environment'
-    description = 'Start local Docker testing environment (PostgreSQL, Kafka, Zookeeper)'
+    description = 'Start local Docker testing environment (PostgreSQL, Kafka KRaft)'
     commandLine 'docker', 'compose', 'up', '-d'
 }
 

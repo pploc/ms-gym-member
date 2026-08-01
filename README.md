@@ -70,7 +70,7 @@ src/main/java/com/gym/member/
 ./gradlew test
 ```
 
-### 2. Start Local Testing Environment (PostgreSQL + Kafka)
+### 2. Start Local Testing Environment (PostgreSQL + Kafka KRaft - Zookeeper-less)
 ```bash
 ./gradlew startEnv
 ```
