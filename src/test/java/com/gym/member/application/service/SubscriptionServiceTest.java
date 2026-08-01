@@ -1,5 +1,6 @@
 package com.gym.member.application.service;
 
+import com.gym.common.error.NotFoundException;
 import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
@@ -7,6 +8,7 @@ import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.domain.exception.MaxPausesExceededException;
@@ -20,22 +22,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import com.gym.member.config.MemberProperties;
-import org.junit.jupiter.api.BeforeEach;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTest {
@@ -148,5 +143,95 @@ class SubscriptionServiceTest {
         assertEquals(MembershipStatus.ACTIVE, result.status());
         assertEquals(LocalDate.now().plusDays(15), result.endDate());
         verify(eventPublisher, times(1)).publish(eq("membership.resumed"), anyString(), any());
+    }
+
+    @Test
+    void activateOrRenewSubscription_newSubscription() {
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(planRepository.findById(planId)).thenReturn(Optional.of(monthlyPlan));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.save(any())).thenAnswer(inv -> {
+            SubscriptionEntity entity = inv.getArgument(0);
+            entity.setId(UUID.randomUUID().toString());
+            return entity;
+        });
+
+        SubscriptionDto dto = subscriptionService.activateOrRenewSubscription(memberId, planId);
+
+        assertNotNull(dto);
+        assertEquals(MembershipStatus.ACTIVE, dto.status());
+        verify(eventPublisher, times(1)).publish(eq("membership.activated"), anyString(), any());
+    }
+
+    @Test
+    void activateOrRenewSubscription_renewalExistingActive() {
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(planRepository.findById(planId)).thenReturn(Optional.of(monthlyPlan));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        SubscriptionDto dto = subscriptionService.activateOrRenewSubscription(memberId, planId);
+
+        assertNotNull(dto);
+        assertEquals(MembershipStatus.ACTIVE, dto.status());
+        verify(eventPublisher, times(1)).publish(eq("membership.activated"), anyString(), any());
+    }
+
+    @Test
+    void activateOrRenewSubscription_lifetimePlan() {
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(planRepository.findById(planId)).thenReturn(Optional.of(lifetimePlan));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.save(any())).thenAnswer(inv -> {
+            SubscriptionEntity entity = inv.getArgument(0);
+            entity.setId(UUID.randomUUID().toString());
+            return entity;
+        });
+
+        SubscriptionDto dto = subscriptionService.activateOrRenewSubscription(memberId, planId);
+
+        assertNotNull(dto);
+        assertNull(dto.endDate());
+    }
+
+    @Test
+    void getActiveSubscription_found() {
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+
+        SubscriptionDto dto = subscriptionService.getActiveSubscription(memberId);
+
+        assertNotNull(dto);
+        assertEquals(memberId, dto.memberId().toString());
+    }
+
+    @Test
+    void getActiveSubscription_notFound_throwsException() {
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> subscriptionService.getActiveSubscription(memberId));
+    }
+
+    @Test
+    void processExpiredSubscriptions_success() {
+        when(subscriptionRepository.findExpiredActiveSubscriptions(any())).thenReturn(List.of(activeSub));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+
+        subscriptionService.processExpiredSubscriptions();
+
+        assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
+        assertEquals(MembershipStatus.EXPIRED, member.getStatus());
+        verify(eventPublisher, times(1)).publish(eq("membership.expired"), anyString(), any());
+    }
+
+    @Test
+    void processExpiringSoonWarnings_success() {
+        when(subscriptionRepository.findExpiringSoonSubscriptions(any())).thenReturn(List.of(activeSub));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(planRepository.findById(planId)).thenReturn(Optional.of(monthlyPlan));
+
+        subscriptionService.processExpiringSoonWarnings();
+
+        verify(eventPublisher, times(1)).publish(eq("membership.expiring-soon"), anyString(), any());
     }
 }

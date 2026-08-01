@@ -49,6 +49,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.retry:spring-retry:2.0.6'
 
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
@@ -66,17 +67,55 @@ dependencies {
     testImplementation 'org.testcontainers:kafka:1.20.1'
 }
 
+def jacocoExcludes = [
+        'com/gym/member/MsGymMemberApplication.class',
+        'com/gym/member/config/**',
+        'com/gym/member/domain/dto/**',
+        'com/gym/member/domain/event/**',
+        'com/gym/member/domain/model/**',
+        'com/gym/member/domain/exception/**',
+        'com/gym/member/adapter/out/persistence/entity/**',
+        'com/gym/member/util/**'
+]
+
 test {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
 }
 
 jacocoTestReport {
-    enabled = false
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: jacocoExcludes)
+        }))
+    }
 }
 
 jacocoTestCoverageVerification {
-    enabled = false
+    dependsOn jacocoTestReport
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: jacocoExcludes)
+        }))
+    }
+    violationRules {
+        rule {
+            element = 'BUNDLE'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.95
+            }
+        }
+    }
 }
+
+check.dependsOn jacocoTestCoverageVerification
 
 tasks.register('startEnv', Exec) {
     group = 'environment'
