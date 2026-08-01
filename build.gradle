@@ -97,5 +97,13 @@ spotless {
     }
 }
 
+tasks.register('seedTestEvents', JavaExec) {
+    group = 'environment'
+    description = 'Publish mock identity.user.registered and payment.completed events to local Kafka'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.gym.member.util.TestEventSeeder'
+}
+
+
 
 
