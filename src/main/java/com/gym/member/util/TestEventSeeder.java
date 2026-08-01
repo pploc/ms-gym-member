@@ -1,7 +1,6 @@
 package com.gym.member.util;
 
 import com.gym.common.kafka.message.EventEnvelope;
-import com.gym.common.kafka.message.EventEnvelopeSerializer;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -13,6 +12,8 @@ import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 
+import org.springframework.kafka.support.serializer.JsonSerializer;
+
 public class TestEventSeeder {
 
     public static void main(String[] args) {
@@ -22,7 +23,7 @@ public class TestEventSeeder {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, EventEnvelopeSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
 
         try (KafkaProducer<String, Object> producer = new KafkaProducer<>(props)) {
             String testUserId = "11111111-1111-1111-1111-111111111111";

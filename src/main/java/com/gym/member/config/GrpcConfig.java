@@ -12,6 +12,8 @@ import org.springframework.context.event.EventListener;
 
 import java.io.IOException;
 
+import io.grpc.protobuf.services.ProtoReflectionService;
+
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class GrpcConfig {
     public void startGrpcServer() throws IOException {
         server = ServerBuilder.forPort(grpcPort)
                 .addService(memberGrpcHandler)
+                .addService(ProtoReflectionService.newInstance())
                 .build()
                 .start();
         log.info("gRPC server started on port {}", grpcPort);
