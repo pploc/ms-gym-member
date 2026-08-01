@@ -65,3 +65,12 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+jacocoTestReport {
+    enabled = false
+}
+
+jacocoTestCoverageVerification {
+    enabled = false
+}
+

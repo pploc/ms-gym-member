@@ -1,0 +1,23 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  java-ci:
+    uses: pploc/gym-infra/.github/workflows/reusable-java-ci.yml@main
+    with:
+      service_path: '.'
+    secrets: inherit
+
+  docker-build:
+    needs: java-ci
+    if: github.event_name == 'push'
+    uses: pploc/gym-infra/.github/workflows/reusable-docker-build.yml@main
+    with:
+      service_name: 'ms-gym-member'
+      context: '.'
+    secrets: inherit
