@@ -1,6 +1,9 @@
 package com.gym.member.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.gym.common.kafka.message.EventEnvelope;
+import com.gym.common.kafka.message.EventEnvelopeSerializer;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -12,8 +15,6 @@ import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 
-import org.springframework.kafka.support.serializer.JsonSerializer;
-
 public class TestEventSeeder {
 
     public static void main(String[] args) {
@@ -23,9 +24,14 @@ public class TestEventSeeder {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        try (KafkaProducer<String, Object> producer = new KafkaProducer<>(props)) {
+        ObjectMapper mapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(EventEnvelope.class, (com.fasterxml.jackson.databind.JsonSerializer) new EventEnvelopeSerializer());
+        mapper.registerModule(module);
+
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
             String testUserId = "11111111-1111-1111-1111-111111111111";
             String testGymId = "22222222-2222-2222-2222-222222222222";
 
@@ -49,8 +55,15 @@ public class TestEventSeeder {
                     "ms-gym-identifier"
             );
 
-            producer.send(new ProducerRecord<>("identity.user.registered", testUserId, regEnvelope)).get();
-            System.out.println("✅ Published identity.user.registered event for user_id: " + testUserId);
+            org.apache.kafka.common.header.Header typeHeader = new org.apache.kafka.common.header.internals.RecordHeader(
+                    "__TypeId__",
+                    "com.gym.common.kafka.message.EventEnvelope".getBytes(java.nio.charset.StandardCharsets.UTF_8)
+            );
+
+            ProducerRecord<String, String> regRecord = new ProducerRecord<>("identity.user.registered", testUserId, mapper.writeValueAsString(regEnvelope));
+            regRecord.headers().add(typeHeader);
+            producer.send(regRecord).get();
+            System.out.println("Published identity.user.registered event for user_id: " + testUserId);
 
             // 2. Seed PaymentCompletedEvent -> payment.completed
             PaymentCompletedEvent paymentEvent = PaymentCompletedEvent.newBuilder()
@@ -73,12 +86,14 @@ public class TestEventSeeder {
                     "ms-gym-payment"
             );
 
-            producer.send(new ProducerRecord<>("payment.completed", testUserId, payEnvelope)).get();
-            System.out.println("✅ Published payment.completed event for user_id: " + testUserId);
+            ProducerRecord<String, String> payRecord = new ProducerRecord<>("payment.completed", testUserId, mapper.writeValueAsString(payEnvelope));
+            payRecord.headers().add(typeHeader);
+            producer.send(payRecord).get();
+            System.out.println("Published payment.completed event for user_id: " + testUserId);
 
-            System.out.println("🎉 Test event seeding complete!");
+            System.out.println("Test event seeding complete!");
         } catch (Exception e) {
-            System.err.println("❌ Failed to seed test events: " + e.getMessage());
+            System.err.println("Failed to seed test events: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }

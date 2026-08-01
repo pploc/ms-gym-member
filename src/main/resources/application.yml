@@ -20,7 +20,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: ms-gym-member-group
+      group-id: ms-gym-member-group-v3
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: com.gym.common.kafka.message.EventEnvelopeDeserializer
@@ -50,3 +50,13 @@ app:
       max-pause-count: ${SUBSCRIPTION_MAX_PAUSE_COUNT:2}
       warning-notice-days: ${SUBSCRIPTION_WARNING_NOTICE_DAYS:7}
       default-duration-days: ${SUBSCRIPTION_DEFAULT_DURATION_DAYS:30}
+
+gym:
+  kafka:
+    retry:
+      max-attempts: ${KAFKA_RETRY_MAX_ATTEMPTS:3}
+      initial-interval-ms: ${KAFKA_RETRY_INITIAL_INTERVAL_MS:1000}
+      multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+    topics:
+      user-registered: ${TOPIC_USER_REGISTERED:identity.user.registered}
+      payment-completed: ${TOPIC_PAYMENT_COMPLETED:payment.completed}
