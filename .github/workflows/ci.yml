@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ develop, main ]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   java-ci:
     uses: pploc/gym-infra/.github/workflows/reusable-java-ci.yml@develop
@@ -16,6 +20,9 @@ jobs:
   docker-build:
     needs: java-ci
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
     uses: pploc/gym-infra/.github/workflows/reusable-docker-build.yml@develop
     with:
       service_name: 'ms-gym-member'
