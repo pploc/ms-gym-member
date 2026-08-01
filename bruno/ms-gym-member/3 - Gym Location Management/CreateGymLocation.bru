@@ -6,10 +6,9 @@ meta {
 
 grpc {
   url: {{host}}:{{grpc_port}}
-  service: member.v1.MemberService
-  method: CreateGymLocation
+  method: /member.v1.MemberService/CreateGymLocation
   body: json
-  protoFilePath: proto/member/v1/member.proto
+  protoFilePath: /home/phucl/Workplace/gapi/ms-gym-member/bruno/ms-gym-member/proto/member/v1/member.proto
 }
 
 headers {
