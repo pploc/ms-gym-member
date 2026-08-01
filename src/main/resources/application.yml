@@ -60,3 +60,4 @@ gym:
     topics:
       user-registered: ${TOPIC_USER_REGISTERED:identity.user.registered}
       payment-completed: ${TOPIC_PAYMENT_COMPLETED:payment.completed}
+      user-suspended: ${TOPIC_USER_SUSPENDED:identity.user.suspended}
