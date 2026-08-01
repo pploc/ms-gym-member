@@ -30,6 +30,8 @@ import com.gym.proto.member.v1.MembershipResponse;
 import com.gym.proto.member.v1.PauseMembershipRequest;
 import com.gym.proto.member.v1.Plan;
 import com.gym.proto.member.v1.PlansResponse;
+import com.gym.proto.member.v1.PurchaseMembershipRequest;
+import com.gym.proto.member.v1.PurchaseResponse;
 import com.gym.proto.member.v1.ResumeMembershipRequest;
 import com.gym.proto.member.v1.UpdateGymLocationRequest;
 import com.gym.proto.member.v1.UpdateProfileRequest;
@@ -111,6 +113,22 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
                     .build()).toList();
 
             responseObserver.onNext(PlansResponse.newBuilder().addAllPlans(planProtos).build());
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            responseObserver.onError(e);
+        }
+    }
+
+    @Override
+    public void purchaseMembership(PurchaseMembershipRequest request, StreamObserver<PurchaseResponse> responseObserver) {
+        try {
+            String paymentId = java.util.UUID.randomUUID().toString();
+            String paymentUrl = "https://payment.gym.com/checkout/" + paymentId;
+            PurchaseResponse response = PurchaseResponse.newBuilder()
+                    .setPaymentId(paymentId)
+                    .setPaymentUrl(paymentUrl)
+                    .build();
+            responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
             responseObserver.onError(e);
