@@ -1,12 +1,12 @@
 package com.gym.member.integration.grpc;
 
 import com.gym.member.adapter.in.grpc.MemberGrpcHandler;
-import com.gym.member.application.service.MemberService;
-import com.gym.member.domain.dto.MemberDto;
+import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.adapter.out.persistence.entity.MemberEntity;
+import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
+import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.domain.model.MembershipStatus;
-import com.gym.proto.member.v1.GetMemberRequest;
-import com.gym.proto.member.v1.MemberResponse;
-import com.gym.proto.member.v1.MemberServiceGrpc;
+import com.gym.proto.member.v1.*;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
@@ -19,45 +19,59 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Transactional
 class MemberGrpcIntegrationTest {
 
     @Autowired
     private MemberGrpcHandler memberGrpcHandler;
 
-    @MockitoBean
-    private MemberService memberService;
+    @Autowired
+    private MemberJpaRepository memberRepository;
+
+    @Autowired
+    private GymLocationJpaRepository gymLocationRepository;
 
     private Server inProcessServer;
     private ManagedChannel inProcessChannel;
     private MemberServiceGrpc.MemberServiceBlockingStub blockingStub;
 
     private String memberId;
-    private MemberDto memberDto;
+    private String gymId;
 
     @BeforeEach
     void setUp() throws Exception {
+        gymId = UUID.randomUUID().toString();
         memberId = UUID.randomUUID().toString();
-        memberDto = new MemberDto(
-                UUID.fromString(memberId),
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "John Integration",
-                "123456789",
-                "http://avatar.jpg",
-                "987654321",
-                MembershipStatus.ACTIVE,
-                null,
-                null
-        );
+
+        GymLocationEntity location = new GymLocationEntity();
+        location.setId(gymId);
+        location.setChainId(UUID.randomUUID().toString());
+        location.setName("Integration Gym Location");
+        location.setAddress("456 Broadway");
+        location.setCity("New York");
+        location.setStatus("ACTIVE");
+        gymLocationRepository.save(location);
+
+        MemberEntity member = new MemberEntity();
+        member.setId(memberId);
+        member.setUserId(UUID.randomUUID().toString());
+        member.setGymId(gymId);
+        member.setFullName("John Real DB");
+        member.setPhone("12345678");
+        member.setStatus(MembershipStatus.ACTIVE);
+        member.setCreatedAt(Instant.now());
+        member.setUpdatedAt(Instant.now());
+        memberRepository.save(member);
 
         String serverName = InProcessServerBuilder.generateName();
 
@@ -76,38 +90,65 @@ class MemberGrpcIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        if (inProcessChannel != null) {
-            inProcessChannel.shutdownNow();
-        }
-        if (inProcessServer != null) {
-            inProcessServer.shutdownNow();
-        }
+        if (inProcessChannel != null) inProcessChannel.shutdownNow();
+        if (inProcessServer != null) inProcessServer.shutdownNow();
     }
 
     @Test
-    void getMember_integrationSuccess() {
-        when(memberService.getMember(memberId)).thenReturn(memberDto);
-
+    void getMember_realDatabaseIntegration() {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
         MemberResponse response = blockingStub.getMember(request);
 
-        assertNotNull(response);
-        assertEquals(memberId, response.getId());
-        assertEquals("John Integration", response.getFullName());
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isEqualTo(memberId);
+        assertThat(response.getFullName()).isEqualTo("John Real DB");
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
     }
 
     @Test
-    void getMember_integrationNotFound_returnsGrpcNotFoundStatus() {
-        when(memberService.getMember(memberId)).thenThrow(new com.gym.common.error.NotFoundException("Member not found"));
-
-        GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
+    void getMember_notFound_returnsGrpcStatusNotFound() {
+        String nonExistentId = UUID.randomUUID().toString();
+        GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(nonExistentId).build();
 
         StatusRuntimeException exception = assertThrows(
                 StatusRuntimeException.class,
                 () -> blockingStub.getMember(request)
         );
 
-        assertEquals(Status.Code.NOT_FOUND, exception.getStatus().getCode());
-        assertTrue(exception.getMessage().contains("Member not found"));
+        assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.NOT_FOUND);
+    }
+
+    @Test
+    void updateProfile_realDatabaseIntegration() {
+        UpdateProfileRequest request = UpdateProfileRequest.newBuilder()
+                .setMemberId(memberId)
+                .setFullName("Jane Real DB")
+                .setPhone("87654321")
+                .build();
+
+        MemberResponse response = blockingStub.updateProfile(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getFullName()).isEqualTo("Jane Real DB");
+        assertThat(response.getPhone()).isEqualTo("87654321");
+
+        MemberEntity updatedInDb = memberRepository.findById(memberId).orElse(null);
+        assertThat(updatedInDb).isNotNull();
+        assertThat(updatedInDb.getFullName()).isEqualTo("Jane Real DB");
+    }
+
+    @Test
+    void listMembers_realDatabaseIntegration() {
+        ListMembersRequest request = ListMembersRequest.newBuilder()
+                .setGymId(gymId)
+                .setPage(0)
+                .setLimit(10)
+                .build();
+
+        ListMembersResponse response = blockingStub.listMembers(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getTotal()).isEqualTo(1);
+        assertThat(response.getMembers(0).getId()).isEqualTo(memberId);
     }
 }

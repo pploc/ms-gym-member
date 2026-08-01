@@ -1,0 +1,54 @@
+package com.gym.member.integration.outbox;
+
+import com.gym.member.adapter.out.persistence.entity.OutboxEventEntity;
+import com.gym.member.adapter.out.persistence.repository.OutboxEventJpaRepository;
+import com.gym.member.application.scheduler.OutboxPublisherScheduler;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+class OutboxPublisherIntegrationTest {
+
+    @Autowired
+    private OutboxPublisherScheduler outboxScheduler;
+
+    @Autowired
+    private OutboxEventJpaRepository outboxRepository;
+
+    private UUID eventId;
+
+    @BeforeEach
+    void setUp() {
+        OutboxEventEntity event = new OutboxEventEntity();
+        event.setAggregateType("member");
+        event.setAggregateId(UUID.randomUUID().toString());
+        event.setEventType("membership.activated");
+        event.setTopic("membership.activated");
+        event.setPayload("{\"memberId\":\"" + UUID.randomUUID() + "\"}");
+        event.setStatus("PENDING");
+        event.setCreatedAt(Instant.now());
+
+        OutboxEventEntity saved = outboxRepository.save(event);
+        eventId = saved.getId();
+    }
+
+    @Test
+    void processOutboxEvents_updatesPendingStatusToPublished() {
+        outboxScheduler.processOutboxEvents();
+
+        OutboxEventEntity updated = outboxRepository.findById(eventId).orElse(null);
+        assertThat(updated).isNotNull();
+        assertThat(updated.getStatus()).isEqualTo("PUBLISHED");
+    }
+}
