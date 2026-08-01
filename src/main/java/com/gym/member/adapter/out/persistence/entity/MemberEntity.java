@@ -2,7 +2,11 @@ package com.gym.member.adapter.out.persistence.entity;
 
 import com.gym.common.persistence.BaseEntity;
 import com.gym.member.domain.model.MembershipStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
