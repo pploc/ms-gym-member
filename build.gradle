@@ -21,6 +21,20 @@ tasks.withType(JavaCompile).configureEach {
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url 'https://maven.pkg.github.com/pploc/gym-proto'
+        credentials {
+            username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user") ?: "pploc"
+            password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
+        }
+    }
+    maven {
+        url 'https://maven.pkg.github.com/pploc/common-java'
+        credentials {
+            username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user") ?: "pploc"
+            password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
+        }
+    }
 }
 
 dependencies {
