@@ -1,0 +1,22 @@
+meta {
+  name: ListGymLocations
+  type: grpc
+  seq: 2
+}
+
+grpc {
+  url: {{host}}:{{grpc_port}}
+  service: member.v1.MemberService
+  method: ListGymLocations
+  protoPath: ../../../../gym-proto/proto/member/v1/member.proto
+}
+
+headers {
+  authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "chain_id": "{{chain_id}}"
+  }
+}

@@ -1,0 +1,26 @@
+meta {
+  name: UpdateGymLocation
+  type: grpc
+  seq: 4
+}
+
+grpc {
+  url: {{host}}:{{grpc_port}}
+  service: member.v1.MemberService
+  method: UpdateGymLocation
+  protoPath: ../../../../gym-proto/proto/member/v1/member.proto
+}
+
+headers {
+  authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "id": "{{gym_id}}",
+    "name": "FitZone District 1 - Premium",
+    "address": "123 Nguyen Hue Street",
+    "city": "Ho Chi Minh",
+    "status": "ACTIVE"
+  }
+}

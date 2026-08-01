@@ -1,0 +1,22 @@
+meta {
+  name: GetMember
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{host}}:{{grpc_port}}
+  service: member.v1.MemberService
+  method: GetMember
+  protoPath: ../../../../gym-proto/proto/member/v1/member.proto
+}
+
+headers {
+  authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "member_id": "{{member_id}}"
+  }
+}
