@@ -213,4 +213,26 @@ class EventConsumerAdapterUnitTest {
         // When & Then
         assertThrows(IllegalArgumentException.class, () -> adapter.handlePaymentCompleted(envelope, ack));
     }
+
+    @Test
+    void givenUserSuspendedEvent_whenHandleUserSuspended_thenSuspendsMemberAndSubscription() {
+        // Given
+        com.gym.proto.events.v1.UserSuspendedEvent payload = com.gym.proto.events.v1.UserSuspendedEvent.newBuilder()
+                .setUserId(userId)
+                .build();
+
+        EventEnvelope<com.gym.proto.events.v1.UserSuspendedEvent> envelope = new EventEnvelope<>(
+                "identity.user.suspended", userId, payload, System.currentTimeMillis(), eventId, "user-service"
+        );
+
+        when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
+
+        // When
+        adapter.handleUserSuspended(envelope, ack);
+
+        // Then
+        verify(subscriptionService, times(1)).suspendMemberAndSubscription(userId);
+        verify(idempotencyService, times(1)).markEventProcessed(eventId, "identity.user.suspended");
+        verify(ack, times(1)).acknowledge();
+    }
 }

@@ -343,4 +343,20 @@ class SubscriptionServiceUnitTest {
         // Then
         verify(eventPublisher, times(1)).publish(eq("membership.expiring-soon"), eq(memberId), any());
     }
+
+    @Test
+    void givenUserSuspended_whenSuspendMemberAndSubscription_thenExpiresMemberAndActiveSubscription() {
+        // Given
+        when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+
+        // When
+        subscriptionService.suspendMemberAndSubscription(userId);
+
+        // Then
+        assertEquals(MembershipStatus.EXPIRED, member.getStatus());
+        assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
+        verify(memberRepository, times(1)).save(member);
+        verify(subscriptionRepository, times(1)).save(activeSub);
+    }
 }

@@ -6,6 +6,7 @@ import com.gym.member.application.service.MemberService;
 import com.gym.member.application.service.SubscriptionService;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
+import com.gym.proto.events.v1.UserSuspendedEvent;
 import com.gym.member.domain.dto.MemberDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -94,6 +95,34 @@ public class EventConsumerAdapter {
             ack.acknowledge();
         } catch (Exception e) {
             log.error("Exception while handling payment.completed event key={}: {}", envelope.key(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    @KafkaListener(topics = "${gym.kafka.topics.user-suspended:identity.user.suspended}")
+    public void handleUserSuspended(EventEnvelope<UserSuspendedEvent> envelope, Acknowledgment ack) {
+        String eventId = resolveEventId(envelope);
+        log.info("Received user suspended event, key: {}, eventId: {}", envelope.key(), eventId);
+
+        if (idempotencyService.isEventProcessed(eventId)) {
+            log.info("Event already processed, skipping duplicate eventId: {}", eventId);
+            ack.acknowledge();
+            return;
+        }
+
+        try {
+            UserSuspendedEvent event = envelope.payload();
+            if (event == null || event.getUserId() == null || event.getUserId().isBlank()) {
+                log.error("Failed to process user suspended event: Payload is null or userId is missing. Key: {}", envelope.key());
+                throw new IllegalArgumentException("UserSuspendedEvent payload or userId cannot be blank. Key: " + envelope.key());
+            }
+
+            subscriptionService.suspendMemberAndSubscription(event.getUserId());
+            idempotencyService.markEventProcessed(eventId, envelope.eventType());
+            ack.acknowledge();
+            log.info("Successfully processed user suspended event for user: {}", event.getUserId());
+        } catch (Exception e) {
+            log.error("Exception while handling user suspended event key={}: {}", envelope.key(), e.getMessage(), e);
             throw e;
         }
     }

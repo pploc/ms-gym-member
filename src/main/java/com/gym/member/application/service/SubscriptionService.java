@@ -246,4 +246,29 @@ public class SubscriptionService {
             }
         }
     }
+
+    @Transactional
+    public void suspendMemberAndSubscription(String userId) {
+        Optional<MemberEntity> memberOpt = memberRepository.findByUserId(userId);
+        if (memberOpt.isEmpty()) {
+            log.warn("Cannot suspend member: No member found for userId: {}", userId);
+            return;
+        }
+
+        MemberEntity member = memberOpt.get();
+        member.setStatus(MembershipStatus.EXPIRED);
+        memberRepository.save(member);
+
+        Optional<SubscriptionEntity> activeSubOpt = subscriptionRepository.findByMemberIdAndStatus(member.getId(), MembershipStatus.ACTIVE)
+                .or(() -> subscriptionRepository.findByMemberIdAndStatus(member.getId(), MembershipStatus.PAUSED));
+
+        if (activeSubOpt.isPresent()) {
+            SubscriptionEntity sub = activeSubOpt.get();
+            sub.setStatus(MembershipStatus.EXPIRED);
+            subscriptionRepository.save(sub);
+            log.info("Cancelled subscription id {} for suspended user: {}", sub.getId(), userId);
+        }
+
+        log.info("Successfully suspended member id {} for userId: {}", member.getId(), userId);
+    }
 }
