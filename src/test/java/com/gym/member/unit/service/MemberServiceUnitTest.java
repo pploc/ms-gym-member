@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -189,6 +190,20 @@ class MemberServiceUnitTest {
     }
 
     @Test
+    void givenBlankFullNameAndNullFields_whenUpdateProfile_thenPreservesExistingFields() {
+        // Given
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // When
+        MemberDto dto = memberService.updateProfile(memberId, "   ", null, null, null);
+
+        // Then
+        assertNotNull(dto);
+        assertEquals("John Doe", dto.fullName());
+    }
+
+    @Test
     void givenMissingMember_whenUpdateProfile_thenThrowsNotFoundException() {
         // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
@@ -226,6 +241,20 @@ class MemberServiceUnitTest {
     }
 
     @Test
+    void givenInvalidPageAndLimit_whenListMembers_thenUsesDefaultPageSizeAndPageZero() {
+        // Given
+        Page<MemberEntity> page = new PageImpl<>(List.of(member));
+        when(memberRepository.findAll(any(PageRequest.class))).thenReturn(page);
+
+        // When
+        NormalPage<MemberDto> result = memberService.listMembers("   ", -1, 0);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.totalRecords());
+    }
+
+    @Test
     void givenStatusAndGymIds_whenListMembersByStatus_thenReturnsFilteredMembers() {
         // Given
         when(memberRepository.findByStatusAndGymIdIn(MembershipStatus.ACTIVE, List.of(gymId))).thenReturn(List.of(member));
@@ -245,6 +274,19 @@ class MemberServiceUnitTest {
 
         // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, null);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void givenEmptyGymIdsList_whenListMembersByStatus_thenReturnsAllMembersWithStatus() {
+        // Given
+        when(memberRepository.findByStatus(MembershipStatus.ACTIVE)).thenReturn(List.of(member));
+
+        // When
+        List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, Collections.emptyList());
 
         // Then
         assertNotNull(result);

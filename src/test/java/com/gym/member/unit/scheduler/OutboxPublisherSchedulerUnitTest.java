@@ -48,4 +48,19 @@ class OutboxPublisherSchedulerUnitTest {
         // Then
         verify(outboxRepository, times(1)).save(outboxEvent);
     }
+
+    @Test
+    void givenSaveFailure_whenProcessOutboxEvents_thenSetsStatusToFailedAndSaves() {
+        // Given
+        when(outboxRepository.findPendingEvents()).thenReturn(List.of(outboxEvent));
+        when(outboxRepository.save(outboxEvent))
+                .thenThrow(new RuntimeException("DB Save Error"))
+                .thenReturn(outboxEvent);
+
+        // When
+        scheduler.processOutboxEvents();
+
+        // Then
+        verify(outboxRepository, times(2)).save(outboxEvent);
+    }
 }
