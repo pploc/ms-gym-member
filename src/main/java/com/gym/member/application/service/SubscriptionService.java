@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.gym.member.config.MemberProperties;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class SubscriptionService {
     private final MemberJpaRepository memberRepository;
     private final MembershipPlanJpaRepository planRepository;
     private final EventPublisher eventPublisher;
+    private final MemberProperties memberProperties;
 
     @Transactional
     public SubscriptionDto activateOrRenewSubscription(String memberId, String planId) {
@@ -59,21 +62,23 @@ public class SubscriptionService {
             sub = activeSubOpt.get();
             isRenewal = true;
 
+            int defaultDays = memberProperties.subscription().defaultDurationDays();
             if (plan.getPlanType() == PlanType.LIFETIME) {
                 sub.setEndDate(null);
             } else if (sub.getEndDate() != null && sub.getEndDate().isAfter(today)) {
-                sub.setEndDate(sub.getEndDate().plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : 30));
+                sub.setEndDate(sub.getEndDate().plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : defaultDays));
             } else {
                 sub.setStartDate(today);
-                sub.setEndDate(today.plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : 30));
+                sub.setEndDate(today.plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : defaultDays));
             }
         } else {
+            int defaultDays = memberProperties.subscription().defaultDurationDays();
             sub = new SubscriptionEntity();
             sub.setMemberId(memberId);
             sub.setPlanId(planId);
             sub.setStatus(MembershipStatus.ACTIVE);
             sub.setStartDate(today);
-            sub.setEndDate(plan.getPlanType() == PlanType.LIFETIME ? null : today.plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : 30));
+            sub.setEndDate(plan.getPlanType() == PlanType.LIFETIME ? null : today.plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : defaultDays));
         }
 
         sub.setStatus(MembershipStatus.ACTIVE);
@@ -114,8 +119,9 @@ public class SubscriptionService {
             throw new CannotPauseLifetimeException("LIFETIME subscriptions cannot be paused.");
         }
 
-        if (sub.getPauseCount() >= 2) {
-            throw new MaxPausesExceededException("Maximum allowed pauses (2) reached for this subscription cycle.");
+        int maxPauses = memberProperties.subscription().maxPauseCount();
+        if (sub.getPauseCount() >= maxPauses) {
+            throw new MaxPausesExceededException("Maximum allowed pauses (" + maxPauses + ") reached for this subscription cycle.");
         }
 
         LocalDate today = LocalDate.now();
@@ -214,7 +220,8 @@ public class SubscriptionService {
 
     @Transactional(readOnly = true)
     public void processExpiringSoonWarnings() {
-        LocalDate warningDate = LocalDate.now().plusDays(7);
+        int warningDays = memberProperties.subscription().warningNoticeDays();
+        LocalDate warningDate = LocalDate.now().plusDays(warningDays);
         List<SubscriptionEntity> warningSubs = subscriptionRepository.findExpiringSoonSubscriptions(warningDate);
         for (SubscriptionEntity sub : warningSubs) {
             Optional<MemberEntity> memberOpt = memberRepository.findById(sub.getMemberId());

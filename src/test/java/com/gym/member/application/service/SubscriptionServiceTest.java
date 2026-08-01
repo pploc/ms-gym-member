@@ -33,6 +33,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.gym.member.config.MemberProperties;
+import org.junit.jupiter.api.BeforeEach;
+import static org.mockito.Mockito.lenient;
+
 @ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTest {
 
@@ -48,6 +52,9 @@ class SubscriptionServiceTest {
     @Mock
     private EventPublisher eventPublisher;
 
+    @Mock
+    private MemberProperties memberProperties;
+
     @InjectMocks
     private SubscriptionService subscriptionService;
 
@@ -60,6 +67,9 @@ class SubscriptionServiceTest {
 
     @BeforeEach
     void setUp() {
+        MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(2, 7, 30);
+        lenient().when(memberProperties.subscription()).thenReturn(subProps);
+
         memberId = UUID.randomUUID().toString();
         planId = UUID.randomUUID().toString();
 

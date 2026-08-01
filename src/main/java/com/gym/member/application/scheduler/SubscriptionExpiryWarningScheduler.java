@@ -13,7 +13,7 @@ public class SubscriptionExpiryWarningScheduler {
 
     private final SubscriptionService subscriptionService;
 
-    @Scheduled(cron = "0 0 9 * * *")
+    @Scheduled(cron = "${app.member.cron.expiry-warning}")
     public void sendExpiryWarnings() {
         log.info("Starting scheduled 9 AM subscription 7-day expiry warning job");
         subscriptionService.processExpiringSoonWarnings();

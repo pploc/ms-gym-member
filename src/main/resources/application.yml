@@ -38,3 +38,14 @@ logging:
   level:
     root: INFO
     com.gym.member: DEBUG
+
+app:
+  member:
+    cron:
+      qr-rotation: "${CRON_QR_ROTATION:0 0 0 * * *}"
+      expiry-check: "${CRON_EXPIRY_CHECK:0 0 6 * * *}"
+      expiry-warning: "${CRON_EXPIRY_WARNING:0 0 9 * * *}"
+    subscription:
+      max-pause-count: ${SUBSCRIPTION_MAX_PAUSE_COUNT:2}
+      warning-notice-days: ${SUBSCRIPTION_WARNING_NOTICE_DAYS:7}
+      default-duration-days: ${SUBSCRIPTION_DEFAULT_DURATION_DAYS:30}

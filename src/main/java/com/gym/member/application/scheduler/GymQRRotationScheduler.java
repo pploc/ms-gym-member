@@ -13,7 +13,7 @@ public class GymQRRotationScheduler {
 
     private final GymQRService gymQRService;
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "${app.member.cron.qr-rotation}")
     public void rotateSecrets() {
         log.info("Starting scheduled midnight Gym QR token secret rotation");
         gymQRService.rotateAllGymDailySecrets();

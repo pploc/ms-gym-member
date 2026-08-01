@@ -13,7 +13,7 @@ public class SubscriptionExpiryCheckScheduler {
 
     private final SubscriptionService subscriptionService;
 
-    @Scheduled(cron = "0 0 6 * * *")
+    @Scheduled(cron = "${app.member.cron.expiry-check}")
     public void checkExpiredSubscriptions() {
         log.info("Starting scheduled 6 AM subscription expiry check");
         subscriptionService.processExpiredSubscriptions();
