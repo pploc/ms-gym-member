@@ -6,7 +6,7 @@ meta {
 
 grpc {
   url: {{host}}:{{grpc_port}}
-  method: ValidateMembership
+  method: /member.v1.MemberService/ValidateMembership
   body: json
   protoFilePath: proto/member/v1/member.proto
 }

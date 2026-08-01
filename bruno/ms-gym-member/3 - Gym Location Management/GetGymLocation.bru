@@ -6,7 +6,7 @@ meta {
 
 grpc {
   url: {{host}}:{{grpc_port}}
-  method: GetGymLocation
+  method: /member.v1.MemberService/GetGymLocation
   body: json
   protoFilePath: proto/member/v1/member.proto
 }

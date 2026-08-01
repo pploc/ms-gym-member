@@ -6,7 +6,7 @@ meta {
 
 grpc {
   url: {{host}}:{{grpc_port}}
-  method: ResumeMembership
+  method: /member.v1.MemberService/ResumeMembership
   body: json
   protoFilePath: proto/member/v1/member.proto
 }

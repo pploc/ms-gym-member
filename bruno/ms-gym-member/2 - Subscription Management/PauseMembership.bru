@@ -6,7 +6,7 @@ meta {
 
 grpc {
   url: {{host}}:{{grpc_port}}
-  method: PauseMembership
+  method: /member.v1.MemberService/PauseMembership
   body: json
   protoFilePath: proto/member/v1/member.proto
 }

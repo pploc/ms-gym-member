@@ -6,7 +6,7 @@ meta {
 
 grpc {
   url: {{host}}:{{grpc_port}}
-  method: GetMember
+  method: /member.v1.MemberService/GetMember
   body: json
   protoFilePath: proto/member/v1/member.proto
 }
