@@ -52,7 +52,8 @@ class EventConsumerAdapterUnitTest {
     }
 
     @Test
-    void handleUserRegistered_newMember_success() {
+    void givenNewUserRegisteredEvent_whenHandleUserRegistered_thenCreatesMemberShellAndMarksProcessed() {
+        // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
                 .setUserId(userId)
                 .setFullName("John Doe")
@@ -65,15 +66,18 @@ class EventConsumerAdapterUnitTest {
 
         when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
 
+        // When
         adapter.handleUserRegistered(envelope, ack);
 
+        // Then
         verify(memberService, times(1)).createMemberShell(userId, "John Doe", gymId);
         verify(idempotencyService, times(1)).markEventProcessed(eventId, "identity.user.registered");
         verify(ack, times(1)).acknowledge();
     }
 
     @Test
-    void handleUserRegistered_duplicateEvent_skipped() {
+    void givenDuplicateUserRegisteredEvent_whenHandleUserRegistered_thenSkipsCreationAndAcknowledges() {
+        // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder().setUserId(userId).setGymId(gymId).build();
         EventEnvelope<UserRegisteredEvent> envelope = new EventEnvelope<>(
                 "identity.user.registered", userId, payload, System.currentTimeMillis(), eventId, "user-service"
@@ -81,25 +85,30 @@ class EventConsumerAdapterUnitTest {
 
         when(idempotencyService.isEventProcessed(eventId)).thenReturn(true);
 
+        // When
         adapter.handleUserRegistered(envelope, ack);
 
+        // Then
         verify(memberService, never()).createMemberShell(any(), any(), any());
         verify(ack, times(1)).acknowledge();
     }
 
     @Test
-    void handleUserRegistered_nullPayload_throwsException() {
+    void givenNullPayloadUserRegisteredEvent_whenHandleUserRegistered_thenThrowsIllegalArgumentException() {
+        // Given
         EventEnvelope<UserRegisteredEvent> envelope = new EventEnvelope<>(
                 "identity.user.registered", userId, null, System.currentTimeMillis(), eventId, "user-service"
         );
 
         when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
 
+        // When & Then
         assertThrows(IllegalArgumentException.class, () -> adapter.handleUserRegistered(envelope, ack));
     }
 
     @Test
-    void handlePaymentCompleted_newPayment_success() {
+    void givenNewPaymentCompletedEvent_whenHandlePaymentCompleted_thenActivatesSubscriptionAndMarksProcessed() {
+        // Given
         com.gym.member.domain.dto.MemberDto memberDto = new com.gym.member.domain.dto.MemberDto(
                 UUID.fromString(userId), UUID.fromString(userId), UUID.fromString(gymId), "John", "123", "", "", com.gym.member.domain.model.MembershipStatus.ACTIVE, null, null
         );
@@ -116,21 +125,25 @@ class EventConsumerAdapterUnitTest {
         when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
         when(memberService.getMemberByUserId(userId)).thenReturn(memberDto);
 
+        // When
         adapter.handlePaymentCompleted(envelope, ack);
 
+        // Then
         verify(subscriptionService, times(1)).activateOrRenewSubscription(eq(userId), any());
         verify(idempotencyService, times(1)).markEventProcessed(eventId, "payment.completed");
         verify(ack, times(1)).acknowledge();
     }
 
     @Test
-    void handlePaymentCompleted_nullPayload_throwsException() {
+    void givenNullPayloadPaymentCompletedEvent_whenHandlePaymentCompleted_thenThrowsIllegalArgumentException() {
+        // Given
         EventEnvelope<PaymentCompletedEvent> envelope = new EventEnvelope<>(
                 "payment.completed", userId, null, System.currentTimeMillis(), eventId, "payment-service"
         );
 
         when(idempotencyService.isEventProcessed(eventId)).thenReturn(false);
 
+        // When & Then
         assertThrows(IllegalArgumentException.class, () -> adapter.handlePaymentCompleted(envelope, ack));
     }
 }

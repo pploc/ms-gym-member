@@ -54,36 +54,48 @@ class GymQRServiceUnitTest {
     }
 
     @Test
-    void getGymDailySecret_success() {
+    void givenExistingGymSecret_whenGetGymDailySecret_thenReturnsDailySecretDto() {
+        // Given
         when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
 
+        // When
         GymDailySecretDto dto = gymQRService.getGymDailySecret(gymId);
 
+        // Then
         assertNotNull(dto);
         assertEquals("secret123", dto.dailySecret());
     }
 
     @Test
-    void getGymDailySecret_notFound() {
+    void givenMissingGymSecret_whenGetGymDailySecret_thenThrowsNotFoundException() {
+        // Given
         when(qrSecretRepository.findById(gymId)).thenReturn(Optional.empty());
 
+        // When & Then
         assertThrows(NotFoundException.class, () -> gymQRService.getGymDailySecret(gymId));
     }
 
     @Test
-    void rotateAllGymDailySecrets_success() {
+    void givenActiveGymLocations_whenRotateAllGymDailySecrets_thenSavesRotatedSecrets() {
+        // Given
         when(gymLocationRepository.findByStatus("ACTIVE")).thenReturn(List.of(gymLocationEntity));
         when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
 
+        // When
         gymQRService.rotateAllGymDailySecrets();
 
+        // Then
         verify(qrSecretRepository, times(1)).save(any());
     }
 
     @Test
-    void computeDailyToken_validFormat() {
+    void givenMemberSecretAndDate_whenComputeDailyToken_thenReturnsSha256TokenString() {
+        // Given
+
+        // When
         String token = gymQRService.computeDailyToken("mem-1", "secret123", LocalDate.now());
 
+        // Then
         assertNotNull(token);
         assertEquals(64, token.length());
     }

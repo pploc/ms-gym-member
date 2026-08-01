@@ -44,9 +44,13 @@ class OutboxPublisherIntegrationTest {
     }
 
     @Test
-    void processOutboxEvents_updatesPendingStatusToPublished() {
+    void givenPendingOutboxEvent_whenProcessOutboxEvents_thenUpdatesStatusToPublished() {
+        // Given - Pending outbox event in DB
+
+        // When
         outboxScheduler.processOutboxEvents();
 
+        // Then
         OutboxEventEntity updated = outboxRepository.findById(eventId).orElse(null);
         assertThat(updated).isNotNull();
         assertThat(updated.getStatus()).isEqualTo("PUBLISHED");

@@ -69,55 +69,69 @@ class MemberServiceUnitTest {
     }
 
     @Test
-    void getMember_success() {
+    void givenExistingMemberId_whenGetMember_thenReturnsMemberDto() {
+        // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
+        // When
         MemberDto dto = memberService.getMember(memberId);
 
+        // Then
         assertNotNull(dto);
         assertEquals(memberId, dto.id().toString());
         assertEquals("John Doe", dto.fullName());
     }
 
     @Test
-    void getMember_notFound() {
+    void givenMissingMemberId_whenGetMember_thenThrowsNotFoundException() {
+        // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
+        // When & Then
         assertThrows(NotFoundException.class, () -> memberService.getMember(memberId));
     }
 
     @Test
-    void getMemberByUserId_success() {
+    void givenExistingUserId_whenGetMemberByUserId_thenReturnsMemberDto() {
+        // Given
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
 
+        // When
         MemberDto dto = memberService.getMemberByUserId(userId);
 
+        // Then
         assertNotNull(dto);
         assertEquals(userId, dto.userId().toString());
     }
 
     @Test
-    void getMemberByUserId_notFound() {
+    void givenMissingUserId_whenGetMemberByUserId_thenThrowsNotFoundException() {
+        // Given
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
+        // When & Then
         assertThrows(NotFoundException.class, () -> memberService.getMemberByUserId(userId));
     }
 
     @Test
-    void createMemberShell_existingMember() {
+    void givenExistingMemberShell_whenCreateMemberShell_thenReturnsExistingMemberWithoutSaving() {
+        // Given
         GymLocationEntity location = new GymLocationEntity();
         location.setId(gymId);
         when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
 
+        // When
         MemberDto dto = memberService.createMemberShell(userId, "John Doe", gymId);
 
+        // Then
         assertNotNull(dto);
         verify(memberRepository, never()).save(any());
     }
 
     @Test
-    void createMemberShell_newMember_withGymId() {
+    void givenNewUserAndValidGymId_whenCreateMemberShell_thenSavesAndReturnsNewMemberDto() {
+        // Given
         GymLocationEntity location = new GymLocationEntity();
         location.setId(gymId);
         when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
@@ -130,33 +144,43 @@ class MemberServiceUnitTest {
             return entity;
         });
 
+        // When
         MemberDto dto = memberService.createMemberShell(userId, "John Doe", gymId);
 
+        // Then
         assertNotNull(dto);
         assertEquals("John Doe", dto.fullName());
         assertEquals(gymId, dto.gymId().toString());
     }
 
     @Test
-    void createMemberShell_nullGymId_throwsIllegalArgumentException() {
+    void givenNullOrBlankGymId_whenCreateMemberShell_thenThrowsIllegalArgumentException() {
+        // Given - null and blank gymId
+
+        // When & Then
         assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "John Doe", null));
         assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "John Doe", "   "));
     }
 
     @Test
-    void createMemberShell_invalidGymId_throwsNotFoundException() {
+    void givenInvalidGymId_whenCreateMemberShell_thenThrowsNotFoundException() {
+        // Given
         when(gymLocationRepository.findById(gymId)).thenReturn(Optional.empty());
 
+        // When & Then
         assertThrows(NotFoundException.class, () -> memberService.createMemberShell(userId, "John Doe", gymId));
     }
 
     @Test
-    void updateProfile_success() {
+    void givenExistingMember_whenUpdateProfile_thenUpdatesFieldsAndReturnsDto() {
+        // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(memberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+        // When
         MemberDto dto = memberService.updateProfile(memberId, "Jane Doe", "123456789", "http://avatar", "987654321");
 
+        // Then
         assertNotNull(dto);
         assertEquals("Jane Doe", dto.fullName());
         assertEquals("123456789", dto.phone());
@@ -165,50 +189,64 @@ class MemberServiceUnitTest {
     }
 
     @Test
-    void updateProfile_notFound() {
+    void givenMissingMember_whenUpdateProfile_thenThrowsNotFoundException() {
+        // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
+        // When & Then
         assertThrows(NotFoundException.class, () -> memberService.updateProfile(memberId, "Jane", null, null, null));
     }
 
     @Test
-    void listMembers_withGymId() {
+    void givenGymIdFilter_whenListMembers_thenReturnsPagedMembersForGym() {
+        // Given
         Page<MemberEntity> page = new PageImpl<>(List.of(member));
         when(memberRepository.findByGymId(eq(gymId), any(PageRequest.class))).thenReturn(page);
 
+        // When
         NormalPage<MemberDto> result = memberService.listMembers(gymId, 0, 10);
 
+        // Then
         assertNotNull(result);
         assertEquals(1, result.totalRecords());
     }
 
     @Test
-    void listMembers_withoutGymId() {
+    void givenNoGymIdFilter_whenListMembers_thenReturnsAllPagedMembers() {
+        // Given
         Page<MemberEntity> page = new PageImpl<>(List.of(member));
         when(memberRepository.findAll(any(PageRequest.class))).thenReturn(page);
 
+        // When
         NormalPage<MemberDto> result = memberService.listMembers(null, 0, 10);
 
+        // Then
         assertNotNull(result);
         assertEquals(1, result.totalRecords());
     }
 
     @Test
-    void listMembersByStatus_withGymIds() {
+    void givenStatusAndGymIds_whenListMembersByStatus_thenReturnsFilteredMembers() {
+        // Given
         when(memberRepository.findByStatusAndGymIdIn(MembershipStatus.ACTIVE, List.of(gymId))).thenReturn(List.of(member));
 
+        // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of(gymId));
 
+        // Then
         assertNotNull(result);
         assertEquals(1, result.size());
     }
 
     @Test
-    void listMembersByStatus_withoutGymIds() {
+    void givenStatusWithoutGymIds_whenListMembersByStatus_thenReturnsAllMembersWithStatus() {
+        // Given
         when(memberRepository.findByStatus(MembershipStatus.ACTIVE)).thenReturn(List.of(member));
 
+        // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, null);
 
+        // Then
         assertNotNull(result);
         assertEquals(1, result.size());
     }

@@ -59,7 +59,8 @@ class EventConsumerIntegrationTest {
     }
 
     @Test
-    void userRegisteredEvent_persistsMemberAndIdempotencyRecord() {
+    void givenUserRegisteredEvent_whenHandleUserRegistered_thenPersistsMemberAndIdempotencyRecord() {
+        // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
                 .setUserId(userId)
                 .setFullName("Integration User")
@@ -71,15 +72,16 @@ class EventConsumerIntegrationTest {
         );
 
         Acknowledgment ack = mock(Acknowledgment.class);
+
+        // When
         consumerAdapter.handleUserRegistered(envelope, ack);
 
-        // Verify member was saved in DB
+        // Then
         MemberEntity member = memberRepository.findByUserId(userId).orElse(null);
         assertThat(member).isNotNull();
         assertThat(member.getFullName()).isEqualTo("Integration User");
         assertThat(member.getGymId()).isEqualTo(gymId);
 
-        // Verify idempotency record was saved in DB
         boolean processed = processedEventRepository.existsById(eventId);
         assertThat(processed).isTrue();
     }

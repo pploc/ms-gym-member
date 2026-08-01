@@ -21,9 +21,13 @@ class SubscriptionExpiryWarningSchedulerUnitTest {
     private SubscriptionExpiryWarningScheduler scheduler;
 
     @Test
-    void sendExpiryWarnings_executesService() {
+    void givenScheduledWarningTrigger_whenSendExpiryWarnings_thenProcessesExpiringSoonWarnings() {
+        // Given - Scheduled warning trigger
+
+        // When
         scheduler.sendExpiryWarnings();
 
+        // Then
         verify(subscriptionService, times(1)).processExpiringSoonWarnings();
     }
 }

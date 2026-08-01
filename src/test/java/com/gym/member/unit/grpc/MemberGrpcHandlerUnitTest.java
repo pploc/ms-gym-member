@@ -84,346 +84,442 @@ class MemberGrpcHandlerUnitTest {
     }
 
     @Test
-    void getMember_success() {
+    void givenValidMemberId_whenGetMember_thenReturnsMemberResponse() {
+        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
 
+        // When
         memberGrpcHandler.getMember(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(MemberResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void getMember_notFound_handlesError() {
+    void givenNotFoundException_whenGetMember_thenCallsOnError() {
+        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new NotFoundException("Not found"));
 
+        // When
         memberGrpcHandler.getMember(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getMember_illegalArgument_handlesError() {
+    void givenIllegalArgumentException_whenGetMember_thenCallsOnError() {
+        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new IllegalArgumentException("Invalid argument"));
 
+        // When
         memberGrpcHandler.getMember(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getMember_domainException_handlesError() {
+    void givenDomainException_whenGetMember_thenCallsOnError() {
+        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new CannotPauseLifetimeException("Precondition failed"));
 
+        // When
         memberGrpcHandler.getMember(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getMember_runtimeException_handlesError() {
+    void givenRuntimeException_whenGetMember_thenCallsOnError() {
+        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new RuntimeException("Internal error"));
 
+        // When
         memberGrpcHandler.getMember(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void updateProfile_success() {
+    void givenValidUpdateProfileRequest_whenUpdateProfile_thenReturnsMemberResponse() {
+        // Given
         UpdateProfileRequest request = UpdateProfileRequest.newBuilder().setMemberId(memberId.toString()).setFullName("Jane").build();
         when(memberService.updateProfile(eq(memberId.toString()), eq("Jane"), any(), any(), any())).thenReturn(memberDto);
 
+        // When
         memberGrpcHandler.updateProfile(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(MemberResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void updateProfile_error() {
+    void givenErrorOnUpdateProfile_whenUpdateProfile_thenCallsOnError() {
+        // Given
         UpdateProfileRequest request = UpdateProfileRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.updateProfile(any(), any(), any(), any(), any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.updateProfile(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void listMembers_success() {
+    void givenValidListMembersRequest_whenListMembers_thenReturnsListMembersResponse() {
+        // Given
         ListMembersRequest request = ListMembersRequest.newBuilder().setGymId(gymId.toString()).setPage(0).setLimit(10).build();
         NormalPage<MemberDto> normalPage = new NormalPage<>(List.of(memberDto), 0, 10, 1L, 1);
         when(memberService.listMembers(gymId.toString(), 0, 10)).thenReturn(normalPage);
 
+        // When
         memberGrpcHandler.listMembers(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(ListMembersResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void listMembers_error() {
+    void givenErrorOnListMembers_whenListMembers_thenCallsOnError() {
+        // Given
         ListMembersRequest request = ListMembersRequest.newBuilder().build();
         when(memberService.listMembers(any(), anyInt(), anyInt())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.listMembers(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getPlans_success() {
+    void givenValidGymId_whenGetPlans_thenReturnsPlansResponse() {
+        // Given
         GetPlansRequest request = GetPlansRequest.newBuilder().setGymId(gymId.toString()).build();
         PlanDto plan = new PlanDto(UUID.randomUUID(), gymId, "Monthly Pass", PlanType.MONTHLY, 30, 500000L, "Desc", true);
         when(gymLocationService.getPlans(gymId.toString())).thenReturn(List.of(plan));
 
+        // When
         memberGrpcHandler.getPlans(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(PlansResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void getPlans_error() {
+    void givenErrorOnGetPlans_whenGetPlans_thenCallsOnError() {
+        // Given
         GetPlansRequest request = GetPlansRequest.newBuilder().build();
         when(gymLocationService.getPlans(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.getPlans(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void purchaseMembership_success() {
+    void givenPurchaseRequest_whenPurchaseMembership_thenReturnsPurchaseResponse() {
+        // Given
         PurchaseMembershipRequest request = PurchaseMembershipRequest.newBuilder().setPlanId(UUID.randomUUID().toString()).build();
 
+        // When
         memberGrpcHandler.purchaseMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(PurchaseResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void pauseMembership_success() {
+    void givenValidMemberId_whenPauseMembership_thenReturnsMembershipResponse() {
+        // Given
         PauseMembershipRequest request = PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.PAUSED, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(subscriptionService.pauseSubscription(memberId.toString())).thenReturn(subDto);
 
+        // When
         memberGrpcHandler.pauseMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(MembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void pauseMembership_error() {
+    void givenErrorOnPauseMembership_whenPauseMembership_thenCallsOnError() {
+        // Given
         PauseMembershipRequest request = PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(subscriptionService.pauseSubscription(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.pauseMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void resumeMembership_success() {
+    void givenValidMemberId_whenResumeMembership_thenReturnsMembershipResponse() {
+        // Given
         ResumeMembershipRequest request = ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(subscriptionService.resumeSubscription(memberId.toString())).thenReturn(subDto);
 
+        // When
         memberGrpcHandler.resumeMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(MembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void resumeMembership_error() {
+    void givenErrorOnResumeMembership_whenResumeMembership_thenCallsOnError() {
+        // Given
         ResumeMembershipRequest request = ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(subscriptionService.resumeSubscription(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.resumeMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getMembershipStatus_success() {
+    void givenValidMemberId_whenGetMembershipStatus_thenReturnsMembershipResponse() {
+        // Given
         GetMembershipStatusRequest request = GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(subscriptionService.getActiveSubscription(memberId.toString())).thenReturn(subDto);
 
+        // When
         memberGrpcHandler.getMembershipStatus(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(MembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void getMembershipStatus_error() {
+    void givenErrorOnGetMembershipStatus_whenGetMembershipStatus_thenCallsOnError() {
+        // Given
         GetMembershipStatusRequest request = GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(subscriptionService.getActiveSubscription(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.getMembershipStatus(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void createGymLocation_success() {
+    void givenValidCreateGymLocationRequest_whenCreateGymLocation_thenReturnsGymLocationResponse() {
+        // Given
         CreateGymLocationRequest request = CreateGymLocationRequest.newBuilder().setChainId(chainId.toString()).setName("Gym A").setAddress("Addr").setCity("City").build();
         GymLocationDto locDto = new GymLocationDto(gymId, chainId, "Gym A", "Addr", "City", "ACTIVE");
         when(gymLocationService.createGymLocation(chainId.toString(), "Gym A", "Addr", "City")).thenReturn(locDto);
 
+        // When
         memberGrpcHandler.createGymLocation(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(GymLocationResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void createGymLocation_error() {
+    void givenErrorOnCreateGymLocation_whenCreateGymLocation_thenCallsOnError() {
+        // Given
         CreateGymLocationRequest request = CreateGymLocationRequest.newBuilder().build();
         when(gymLocationService.createGymLocation(any(), any(), any(), any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.createGymLocation(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void updateGymLocation_success() {
+    void givenValidUpdateGymLocationRequest_whenUpdateGymLocation_thenReturnsGymLocationResponse() {
+        // Given
         UpdateGymLocationRequest request = UpdateGymLocationRequest.newBuilder().setId(gymId.toString()).setName("Gym B").build();
         GymLocationDto locDto = new GymLocationDto(gymId, chainId, "Gym B", "Addr", "City", "ACTIVE");
         when(gymLocationService.updateGymLocation(eq(gymId.toString()), eq("Gym B"), any(), any(), any())).thenReturn(locDto);
 
+        // When
         memberGrpcHandler.updateGymLocation(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(GymLocationResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void updateGymLocation_error() {
+    void givenErrorOnUpdateGymLocation_whenUpdateGymLocation_thenCallsOnError() {
+        // Given
         UpdateGymLocationRequest request = UpdateGymLocationRequest.newBuilder().setId(gymId.toString()).build();
         when(gymLocationService.updateGymLocation(any(), any(), any(), any(), any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.updateGymLocation(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void listGymLocations_success() {
+    void givenChainId_whenListGymLocations_thenReturnsGymLocationsResponse() {
+        // Given
         ListGymLocationsRequest request = ListGymLocationsRequest.newBuilder().setChainId(chainId.toString()).build();
         GymLocationDto locDto = new GymLocationDto(gymId, chainId, "Gym B", "Addr", "City", "ACTIVE");
         when(gymLocationService.listGymLocations(chainId.toString())).thenReturn(List.of(locDto));
 
+        // When
         memberGrpcHandler.listGymLocations(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(GymLocationsResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void listGymLocations_error() {
+    void givenErrorOnListGymLocations_whenListGymLocations_thenCallsOnError() {
+        // Given
         ListGymLocationsRequest request = ListGymLocationsRequest.newBuilder().build();
         when(gymLocationService.listGymLocations(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.listGymLocations(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getGymLocation_success() {
+    void givenGymId_whenGetGymLocation_thenReturnsGymLocationResponse() {
+        // Given
         GetGymLocationRequest request = GetGymLocationRequest.newBuilder().setId(gymId.toString()).build();
         GymLocationDto locDto = new GymLocationDto(gymId, chainId, "Gym B", "Addr", "City", "ACTIVE");
         when(gymLocationService.getGymLocation(gymId.toString())).thenReturn(locDto);
 
+        // When
         memberGrpcHandler.getGymLocation(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(GymLocationResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void getGymLocation_error() {
+    void givenErrorOnGetGymLocation_whenGetGymLocation_thenCallsOnError() {
+        // Given
         GetGymLocationRequest request = GetGymLocationRequest.newBuilder().setId(gymId.toString()).build();
         when(gymLocationService.getGymLocation(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.getGymLocation(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void validateMembership_valid() {
+    void givenValidMember_whenValidateMembership_thenReturnsValidateMembershipResponse() {
+        // Given
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder().setMemberId(memberId.toString()).setGymId(gymId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
 
+        // When
         memberGrpcHandler.validateMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(ValidateMembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void validateMembership_error() {
+    void givenErrorOnValidateMembership_whenValidateMembership_thenCallsOnError() {
+        // Given
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.validateMembership(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void getGymDailySecret_success() {
+    void givenGymId_whenGetGymDailySecret_thenReturnsGymDailySecretResponse() {
+        // Given
         GetGymDailySecretRequest request = GetGymDailySecretRequest.newBuilder().setGymId(gymId.toString()).build();
         GymDailySecretDto secretDto = new GymDailySecretDto(gymId, "secret-xyz");
         when(gymQRService.getGymDailySecret(gymId.toString())).thenReturn(secretDto);
 
+        // When
         memberGrpcHandler.getGymDailySecret(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(GymDailySecretResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void getGymDailySecret_error() {
+    void givenErrorOnGetGymDailySecret_whenGetGymDailySecret_thenCallsOnError() {
+        // Given
         GetGymDailySecretRequest request = GetGymDailySecretRequest.newBuilder().setGymId(gymId.toString()).build();
         when(gymQRService.getGymDailySecret(any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.getGymDailySecret(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 
     @Test
-    void listMembersByStatus_success() {
+    void givenStatus_whenListMembersByStatus_thenReturnsListMembersByStatusResponse() {
+        // Given
         ListMembersByStatusRequest request = ListMembersByStatusRequest.newBuilder().setStatus("ACTIVE").build();
         when(memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of())).thenReturn(List.of(memberDto));
 
+        // When
         memberGrpcHandler.listMembersByStatus(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onNext(any(ListMembersByStatusResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void listMembersByStatus_error() {
+    void givenErrorOnListMembersByStatus_whenListMembersByStatus_thenCallsOnError() {
+        // Given
         ListMembersByStatusRequest request = ListMembersByStatusRequest.newBuilder().setStatus("ACTIVE").build();
         when(memberService.listMembersByStatus(any(), any())).thenThrow(new RuntimeException("Error"));
 
+        // When
         memberGrpcHandler.listMembersByStatus(request, responseObserver);
 
+        // Then
         verify(responseObserver, times(1)).onError(any());
     }
 }

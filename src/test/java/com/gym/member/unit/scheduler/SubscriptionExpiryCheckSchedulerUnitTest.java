@@ -21,9 +21,13 @@ class SubscriptionExpiryCheckSchedulerUnitTest {
     private SubscriptionExpiryCheckScheduler scheduler;
 
     @Test
-    void checkExpiredSubscriptions_executesService() {
+    void givenScheduledCheck_whenCheckExpiredSubscriptions_thenProcessesExpiredSubscriptions() {
+        // Given - Scheduled check
+
+        // When
         scheduler.checkExpiredSubscriptions();
 
+        // Then
         verify(subscriptionService, times(1)).processExpiredSubscriptions();
     }
 }

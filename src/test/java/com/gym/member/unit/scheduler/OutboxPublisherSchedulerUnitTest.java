@@ -38,11 +38,14 @@ class OutboxPublisherSchedulerUnitTest {
     }
 
     @Test
-    void processOutboxEvents_success() {
+    void givenPendingOutboxEvents_whenProcessOutboxEvents_thenSavesPublishedStatus() {
+        // Given
         when(outboxRepository.findPendingEvents()).thenReturn(List.of(outboxEvent));
 
+        // When
         scheduler.processOutboxEvents();
 
+        // Then
         verify(outboxRepository, times(1)).save(outboxEvent);
     }
 }

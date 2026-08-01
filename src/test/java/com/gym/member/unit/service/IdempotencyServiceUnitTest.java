@@ -31,23 +31,37 @@ class IdempotencyServiceUnitTest {
     }
 
     @Test
-    void isEventProcessed_true() {
+    void givenProcessedEvent_whenIsEventProcessed_thenReturnsTrue() {
+        // Given
         when(repository.existsById(eventId)).thenReturn(true);
 
-        assertTrue(idempotencyService.isEventProcessed(eventId));
+        // When
+        boolean result = idempotencyService.isEventProcessed(eventId);
+
+        // Then
+        assertTrue(result);
     }
 
     @Test
-    void isEventProcessed_false() {
+    void givenUnprocessedEvent_whenIsEventProcessed_thenReturnsFalse() {
+        // Given
         when(repository.existsById(eventId)).thenReturn(false);
 
-        assertFalse(idempotencyService.isEventProcessed(eventId));
+        // When
+        boolean result = idempotencyService.isEventProcessed(eventId);
+
+        // Then
+        assertFalse(result);
     }
 
     @Test
-    void markEventProcessed_success() {
+    void givenNewEvent_whenMarkEventProcessed_thenSavesProcessedEventEntity() {
+        // Given - New event
+
+        // When
         idempotencyService.markEventProcessed(eventId, "user.registered");
 
+        // Then
         verify(repository, times(1)).save(any(ProcessedEventEntity.class));
     }
 }

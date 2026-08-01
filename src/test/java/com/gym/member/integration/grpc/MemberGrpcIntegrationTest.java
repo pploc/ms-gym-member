@@ -95,10 +95,14 @@ class MemberGrpcIntegrationTest {
     }
 
     @Test
-    void getMember_realDatabaseIntegration() {
+    void givenExistingMember_whenGetMember_thenReturnsMemberResponse() {
+        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
+
+        // When
         MemberResponse response = blockingStub.getMember(request);
 
+        // Then
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(memberId);
         assertThat(response.getFullName()).isEqualTo("John Real DB");
@@ -106,28 +110,34 @@ class MemberGrpcIntegrationTest {
     }
 
     @Test
-    void getMember_notFound_returnsGrpcStatusNotFound() {
+    void givenNonExistentMember_whenGetMember_thenThrowsNotFoundStatus() {
+        // Given
         String nonExistentId = UUID.randomUUID().toString();
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(nonExistentId).build();
 
+        // When
         StatusRuntimeException exception = assertThrows(
                 StatusRuntimeException.class,
                 () -> blockingStub.getMember(request)
         );
 
+        // Then
         assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.NOT_FOUND);
     }
 
     @Test
-    void updateProfile_realDatabaseIntegration() {
+    void givenValidProfileUpdateRequest_whenUpdateProfile_thenUpdatesMemberInDatabase() {
+        // Given
         UpdateProfileRequest request = UpdateProfileRequest.newBuilder()
                 .setMemberId(memberId)
                 .setFullName("Jane Real DB")
                 .setPhone("87654321")
                 .build();
 
+        // When
         MemberResponse response = blockingStub.updateProfile(request);
 
+        // Then
         assertThat(response).isNotNull();
         assertThat(response.getFullName()).isEqualTo("Jane Real DB");
         assertThat(response.getPhone()).isEqualTo("87654321");
@@ -138,15 +148,18 @@ class MemberGrpcIntegrationTest {
     }
 
     @Test
-    void listMembers_realDatabaseIntegration() {
+    void givenExistingGymMembers_whenListMembers_thenReturnsMembersListResponse() {
+        // Given
         ListMembersRequest request = ListMembersRequest.newBuilder()
                 .setGymId(gymId)
                 .setPage(0)
                 .setLimit(10)
                 .build();
 
+        // When
         ListMembersResponse response = blockingStub.listMembers(request);
 
+        // Then
         assertThat(response).isNotNull();
         assertThat(response.getTotal()).isEqualTo(1);
         assertThat(response.getMembers(0).getId()).isEqualTo(memberId);

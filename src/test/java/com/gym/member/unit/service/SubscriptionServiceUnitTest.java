@@ -93,7 +93,8 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
-    void activateOrRenewSubscription_newActive() {
+    void givenNoActiveSubscription_whenActivateOrRenewSubscription_thenCreatesNewActiveSubscription() {
+        // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
@@ -105,15 +106,18 @@ class SubscriptionServiceUnitTest {
             return entity;
         });
 
+        // When
         SubscriptionDto result = subscriptionService.activateOrRenewSubscription(memberId, planId);
 
+        // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
         verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq(memberId), any());
     }
 
     @Test
-    void activateOrRenewSubscription_renewalActive() {
+    void givenActiveSubscription_whenActivateOrRenewSubscription_thenExtendsEndDateAndPublishesEvent() {
+        // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
@@ -121,15 +125,18 @@ class SubscriptionServiceUnitTest {
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+        // When
         SubscriptionDto result = subscriptionService.activateOrRenewSubscription(memberId, planId);
 
+        // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
         verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq(memberId), any());
     }
 
     @Test
-    void activateOrRenewSubscription_lifetime() {
+    void givenLifetimePlan_whenActivateOrRenewSubscription_thenCreatesSubscriptionWithNullEndDate() {
+        // Given
         plan.setPlanType(PlanType.LIFETIME);
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
@@ -138,14 +145,17 @@ class SubscriptionServiceUnitTest {
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+        // When
         SubscriptionDto result = subscriptionService.activateOrRenewSubscription(memberId, planId);
 
+        // Then
         assertNotNull(result);
         assertNull(result.endDate());
     }
 
     @Test
-    void pauseSubscription_success() {
+    void givenActiveMonthlySubscription_whenPauseSubscription_thenPausesSubscriptionAndIncrementsPauseCount() {
+        // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
@@ -153,8 +163,10 @@ class SubscriptionServiceUnitTest {
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+        // When
         SubscriptionDto result = subscriptionService.pauseSubscription(memberId);
 
+        // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.PAUSED, result.status());
         assertEquals(1, result.pauseCount());
@@ -162,17 +174,20 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
-    void pauseSubscription_lifetimeThrowsCannotPause() {
+    void givenLifetimeSubscription_whenPauseSubscription_thenThrowsCannotPauseLifetimeException() {
+        // Given
         plan.setPlanType(PlanType.LIFETIME);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
 
+        // When & Then
         assertThrows(CannotPauseLifetimeException.class, () -> subscriptionService.pauseSubscription(memberId));
     }
 
     @Test
-    void pauseSubscription_maxPausesExceeded() {
+    void givenMaxPausesReached_whenPauseSubscription_thenThrowsMaxPausesExceededException() {
+        // Given
         activeSub.setPauseCount(3);
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
@@ -180,11 +195,13 @@ class SubscriptionServiceUnitTest {
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
 
+        // When & Then
         assertThrows(MaxPausesExceededException.class, () -> subscriptionService.pauseSubscription(memberId));
     }
 
     @Test
-    void resumeSubscription_success() {
+    void givenPausedSubscription_whenResumeSubscription_thenResumesSubscriptionToActive() {
+        // Given
         SubscriptionEntity pausedSub = new SubscriptionEntity();
         pausedSub.setId(UUID.randomUUID().toString());
         pausedSub.setMemberId(memberId);
@@ -195,44 +212,55 @@ class SubscriptionServiceUnitTest {
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.of(pausedSub));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+        // When
         SubscriptionDto result = subscriptionService.resumeSubscription(memberId);
 
+        // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
         verify(eventPublisher, times(1)).publish(eq("membership.resumed"), eq(memberId), any());
     }
 
     @Test
-    void getActiveSubscription_success() {
+    void givenActiveSubscription_whenGetActiveSubscription_thenReturnsSubscriptionDto() {
+        // Given
         when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
 
+        // When
         SubscriptionDto result = subscriptionService.getActiveSubscription(memberId);
 
+        // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
     }
 
     @Test
-    void processExpiredSubscriptions_success() {
+    void givenExpiredActiveSubscriptions_whenProcessExpiredSubscriptions_thenUpdatesStatusToExpiredAndPublishesEvent() {
+        // Given
         when(subscriptionRepository.findExpiredActiveSubscriptions(any())).thenReturn(List.of(activeSub));
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
+        // When
         subscriptionService.processExpiredSubscriptions();
 
+        // Then
         verify(subscriptionRepository, times(1)).save(activeSub);
         verify(eventPublisher, times(1)).publish(eq("membership.expired"), eq(memberId), any());
     }
 
     @Test
-    void processExpiringSoonWarnings_success() {
+    void givenExpiringSoonSubscriptions_whenProcessExpiringSoonWarnings_thenPublishesExpiringSoonEvent() {
+        // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(subscriptionRepository.findExpiringSoonSubscriptions(any())).thenReturn(List.of(activeSub));
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
 
+        // When
         subscriptionService.processExpiringSoonWarnings();
 
+        // Then
         verify(eventPublisher, times(1)).publish(eq("membership.expiring-soon"), eq(memberId), any());
     }
 }

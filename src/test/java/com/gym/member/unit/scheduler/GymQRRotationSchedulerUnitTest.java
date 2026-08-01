@@ -21,9 +21,13 @@ class GymQRRotationSchedulerUnitTest {
     private GymQRRotationScheduler scheduler;
 
     @Test
-    void rotateSecrets_executesService() {
+    void givenScheduledTrigger_whenRotateSecrets_thenRotatesAllGymDailySecrets() {
+        // Given - Scheduled trigger
+
+        // When
         scheduler.rotateSecrets();
 
+        // Then
         verify(gymQRService, times(1)).rotateAllGymDailySecrets();
     }
 }
