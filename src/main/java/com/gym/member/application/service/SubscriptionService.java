@@ -267,6 +267,14 @@ public class SubscriptionService {
             sub.setStatus(MembershipStatus.EXPIRED);
             subscriptionRepository.save(sub);
             log.info("Cancelled subscription id {} for suspended user: {}", sub.getId(), userId);
+
+            MembershipExpiredEvent event = MembershipExpiredEvent.newBuilder()
+                    .setMemberId(member.getId())
+                    .setExpiredAt(Instant.now().toEpochMilli())
+                    .setGymId(member.getGymId())
+                    .build();
+
+            eventPublisher.publish("membership.expired", member.getId(), event);
         }
 
         log.info("Successfully suspended member id {} for userId: {}", member.getId(), userId);

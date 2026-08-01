@@ -358,5 +358,6 @@ class SubscriptionServiceUnitTest {
         assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
         verify(memberRepository, times(1)).save(member);
         verify(subscriptionRepository, times(1)).save(activeSub);
+        verify(eventPublisher, times(1)).publish(eq("membership.expired"), eq(memberId), any());
     }
 }
