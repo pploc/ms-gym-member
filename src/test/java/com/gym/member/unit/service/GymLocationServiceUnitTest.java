@@ -2,6 +2,7 @@ package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.domain.model.GymLocationStatus;
 import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
@@ -57,10 +58,10 @@ class GymLocationServiceUnitTest {
         location = new GymLocationEntity();
         location.setId(gymId);
         location.setChainId(chainId);
-        location.setName("Central Gym");
-        location.setAddress("123 Main St");
-        location.setCity("Metropolis");
-        location.setStatus("ACTIVE");
+        location.setName("Gym A");
+        location.setAddress("Street 1");
+        location.setCity("Hanoi");
+        location.setStatus(GymLocationStatus.ACTIVE);
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepositor
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.domain.dto.GymLocationDto;
 import com.gym.member.domain.dto.PlanDto;
+import com.gym.member.domain.model.GymLocationStatus;
 import com.gym.member.mapper.GymLocationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,7 @@ public class GymLocationService {
         entity.setName(name);
         entity.setAddress(address);
         entity.setCity(city);
-        entity.setStatus("ACTIVE");
+        entity.setStatus(GymLocationStatus.ACTIVE);
 
         GymLocationEntity saved = gymLocationRepository.save(entity);
 
@@ -56,7 +57,9 @@ public class GymLocationService {
         if (name != null && !name.isBlank()) entity.setName(name);
         if (address != null && !address.isBlank()) entity.setAddress(address);
         if (city != null && !city.isBlank()) entity.setCity(city);
-        if (status != null && !status.isBlank()) entity.setStatus(status);
+        if (status != null && !status.isBlank()) {
+            entity.setStatus(GymLocationStatus.valueOf(status.toUpperCase()));
+        }
 
         GymLocationEntity saved = gymLocationRepository.save(entity);
         return gymLocationMapper.toDto(saved);

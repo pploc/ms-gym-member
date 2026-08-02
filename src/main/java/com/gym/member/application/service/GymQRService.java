@@ -7,6 +7,7 @@ import com.gym.member.adapter.out.persistence.entity.GymQRSecretEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.domain.dto.GymDailySecretDto;
+import com.gym.member.domain.model.GymLocationStatus;
 import com.gym.member.mapper.GymQRSecretMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +45,7 @@ public class GymQRService {
 
     @Transactional
     public void rotateAllGymDailySecrets() {
-        List<GymLocationEntity> activeGyms = gymLocationRepository.findByStatus("ACTIVE");
+        List<GymLocationEntity> activeGyms = gymLocationRepository.findByStatus(GymLocationStatus.ACTIVE);
         Instant now = Instant.now(clock);
         for (GymLocationEntity gym : activeGyms) {
             String newSecret = UUID.randomUUID().toString().replace("-", "");

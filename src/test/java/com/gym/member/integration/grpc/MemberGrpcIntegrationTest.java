@@ -7,6 +7,7 @@ import com.gym.common.grpc.interceptor.MetricsInterceptor;
 import com.gym.common.grpc.interceptor.TracingInterceptor;
 import com.gym.member.adapter.in.grpc.MemberGrpcHandler;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.domain.model.GymLocationStatus;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
@@ -85,7 +86,7 @@ class MemberGrpcIntegrationTest {
         location.setName("Integration Gym Location");
         location.setAddress("456 Broadway");
         location.setCity("New York");
-        location.setStatus("ACTIVE");
+        location.setStatus(GymLocationStatus.ACTIVE);
         gymLocationRepository.save(location);
 
         MemberEntity member = new MemberEntity();

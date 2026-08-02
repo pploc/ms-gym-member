@@ -3,6 +3,7 @@ package com.gym.member.integration.kafka;
 import com.gym.common.kafka.message.EventEnvelope;
 import com.gym.member.adapter.in.kafka.EventConsumerAdapter;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.domain.model.GymLocationStatus;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
@@ -54,7 +55,7 @@ class EventConsumerIntegrationTest {
         location.setName("Integration Gym");
         location.setAddress("Street 1");
         location.setCity("Hanoi");
-        location.setStatus("ACTIVE");
+        location.setStatus(GymLocationStatus.ACTIVE);
         gymLocationRepository.save(location);
     }
 

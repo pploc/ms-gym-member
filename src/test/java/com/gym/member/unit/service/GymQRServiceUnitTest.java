@@ -7,6 +7,7 @@ import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepositor
 import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.domain.dto.GymDailySecretDto;
+import com.gym.member.domain.model.GymLocationStatus;
 import com.gym.member.mapper.GymQRSecretMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,7 +61,7 @@ class GymQRServiceUnitTest {
 
         gymLocationEntity = new GymLocationEntity();
         gymLocationEntity.setId(gymId);
-        gymLocationEntity.setStatus("ACTIVE");
+        gymLocationEntity.setStatus(GymLocationStatus.ACTIVE);
     }
 
     @Test
@@ -88,7 +89,7 @@ class GymQRServiceUnitTest {
     @Test
     void givenActiveGymLocations_whenRotateAllGymDailySecrets_thenSavesRotatedSecrets() {
         // Given
-        when(gymLocationRepository.findByStatus("ACTIVE")).thenReturn(List.of(gymLocationEntity));
+        when(gymLocationRepository.findByStatus(GymLocationStatus.ACTIVE)).thenReturn(List.of(gymLocationEntity));
         when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
 
         // When

@@ -1,8 +1,11 @@
 package com.gym.member.adapter.out.persistence.entity;
 
 import com.gym.common.persistence.BaseEntity;
+import com.gym.member.domain.model.GymLocationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,5 +29,6 @@ public class GymLocationEntity extends BaseEntity {
     private String city;
 
     @Column(name = "status", nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private GymLocationStatus status = GymLocationStatus.ACTIVE;
 }
