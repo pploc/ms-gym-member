@@ -16,7 +16,8 @@ public class MemberEventProcessingService {
 
     private final IdempotencyService idempotencyService;
     private final MemberService memberService;
-    private final SubscriptionService subscriptionService;
+    private final SubscriptionActivationService subscriptionActivationService;
+    private final SubscriptionExpiryService subscriptionExpiryService;
 
     public enum EventProcessingResult {
         PROCESSED,
@@ -59,7 +60,7 @@ public class MemberEventProcessingService {
             }
 
             MemberDto member = memberService.getMemberByUserId(userId);
-            subscriptionService.activateOrRenewSubscription(member.id().toString(), planId);
+            subscriptionActivationService.activateOrRenewSubscription(member.id().toString(), planId);
             log.info("Successfully processed payment completed event for member: {}", member.id());
             return EventProcessingResult.PROCESSED;
         }
@@ -78,7 +79,7 @@ public class MemberEventProcessingService {
             throw new IllegalArgumentException("UserSuspendedEvent payload or userId cannot be blank");
         }
 
-        subscriptionService.suspendMemberAndSubscription(event.getUserId());
+        subscriptionExpiryService.suspendMemberAndSubscription(event.getUserId());
         log.info("Successfully processed user suspended event for user: {}", event.getUserId());
         return EventProcessingResult.PROCESSED;
     }

@@ -9,6 +9,9 @@ import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaReposi
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
 import com.gym.member.application.service.MembershipEventFactory;
 import com.gym.member.application.service.OutboxEventWriter;
+import com.gym.member.application.service.SubscriptionActivationService;
+import com.gym.member.application.service.SubscriptionExpiryService;
+import com.gym.member.application.service.SubscriptionLifecycleService;
 import com.gym.member.application.service.SubscriptionService;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
@@ -105,6 +108,17 @@ class SubscriptionServiceUnitTest {
         activeSub.setStartDate(LocalDate.now(clock));
         activeSub.setEndDate(LocalDate.now(clock).plusDays(30));
         activeSub.setPauseCount(0);
+
+        SubscriptionActivationService activationService = new SubscriptionActivationService(
+                subscriptionRepository, memberRepository, planRepository, outboxEventWriter, eventFactory, memberProperties, subscriptionMapper, clock
+        );
+        SubscriptionLifecycleService lifecycleService = new SubscriptionLifecycleService(
+                subscriptionRepository, memberRepository, planRepository, outboxEventWriter, eventFactory, memberProperties, subscriptionMapper, clock
+        );
+        SubscriptionExpiryService expiryService = new SubscriptionExpiryService(
+                subscriptionRepository, memberRepository, planRepository, outboxEventWriter, eventFactory, memberProperties, clock
+        );
+        subscriptionService = new SubscriptionService(activationService, lifecycleService, expiryService);
     }
 
     @Test

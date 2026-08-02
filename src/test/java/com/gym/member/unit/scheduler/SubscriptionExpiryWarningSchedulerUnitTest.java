@@ -1,7 +1,7 @@
 package com.gym.member.unit.scheduler;
 
 import com.gym.member.application.scheduler.SubscriptionExpiryWarningScheduler;
-import com.gym.member.application.service.SubscriptionService;
+import com.gym.member.application.service.SubscriptionExpiryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,7 +15,7 @@ import static org.mockito.Mockito.verify;
 class SubscriptionExpiryWarningSchedulerUnitTest {
 
     @Mock
-    private SubscriptionService subscriptionService;
+    private SubscriptionExpiryService expiryService;
 
     @InjectMocks
     private SubscriptionExpiryWarningScheduler scheduler;
@@ -28,6 +28,6 @@ class SubscriptionExpiryWarningSchedulerUnitTest {
         scheduler.sendExpiryWarnings();
 
         // Then
-        verify(subscriptionService, times(1)).processExpiringSoonWarnings();
+        verify(expiryService, times(1)).processExpiringSoonWarnings();
     }
 }
