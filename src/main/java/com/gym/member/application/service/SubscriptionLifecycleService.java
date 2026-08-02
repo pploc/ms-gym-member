@@ -9,6 +9,7 @@ import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaReposi
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
 import com.gym.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.config.MemberProperties;
+import com.gym.member.domain.constant.MemberEventTopics;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.domain.exception.MaxPausesExceededException;
@@ -74,7 +75,7 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
         memberRepository.save(member);
 
         MembershipPausedEvent event = eventFactory.createPausedEvent(member, remainingDays, today);
-        outboxEventWriter.write("member", member.getId(), "membership.paused", event);
+        outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_PAUSED, event);
 
         return subscriptionMapper.toDto(savedSub);
     }
@@ -102,7 +103,7 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
         memberRepository.save(member);
 
         MembershipResumedEvent event = eventFactory.createResumedEvent(member, newEndDate);
-        outboxEventWriter.write("member", member.getId(), "membership.resumed", event);
+        outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_RESUMED, event);
 
         return subscriptionMapper.toDto(savedSub);
     }

@@ -11,7 +11,7 @@ import org.mapstruct.ReportingPolicy;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "spring", uses = {CommonMapperUtils.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface SubscriptionMapper {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "toUuid")
@@ -25,19 +25,4 @@ public interface SubscriptionMapper {
     @Mapping(target = "endDate", source = "endDate", qualifiedByName = "dateToString")
     @Mapping(target = "remainingDays", source = "remainingDays", defaultValue = "0")
     MembershipResponse toResponse(SubscriptionDto dto);
-
-    @Named("toUuid")
-    default UUID toUuid(String str) {
-        return str != null ? UUID.fromString(str) : null;
-    }
-
-    @Named("uuidToString")
-    default String uuidToString(UUID uuid) {
-        return uuid != null ? uuid.toString() : "";
-    }
-
-    @Named("dateToString")
-    default String dateToString(LocalDate date) {
-        return date != null ? date.toString() : "";
-    }
 }

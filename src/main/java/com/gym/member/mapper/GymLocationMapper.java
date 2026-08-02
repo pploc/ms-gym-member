@@ -13,7 +13,7 @@ import org.mapstruct.ReportingPolicy;
 
 import java.util.UUID;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "spring", uses = {CommonMapperUtils.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface GymLocationMapper {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "toUuid")
@@ -33,14 +33,4 @@ public interface GymLocationMapper {
     @Mapping(target = "durationDays", source = "durationDays", defaultValue = "0")
     @Mapping(target = "description", source = "description", defaultValue = "")
     Plan toPlanProto(PlanDto dto);
-
-    @Named("toUuid")
-    default UUID toUuid(String str) {
-        return str != null ? UUID.fromString(str) : null;
-    }
-
-    @Named("uuidToString")
-    default String uuidToString(UUID uuid) {
-        return uuid != null ? uuid.toString() : "";
-    }
 }

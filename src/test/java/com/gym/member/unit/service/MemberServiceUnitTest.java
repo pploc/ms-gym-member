@@ -156,6 +156,13 @@ class MemberServiceUnitTest {
     }
 
     @Test
+    void givenNullOrBlankFullName_whenCreateMemberShell_thenThrowsIllegalArgumentException() {
+        // When & Then
+        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, null, gymId));
+        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "   ", gymId));
+    }
+
+    @Test
     void givenNullOrBlankGymId_whenCreateMemberShell_thenThrowsIllegalArgumentException() {
         // Given - null and blank gymId
 
@@ -259,7 +266,7 @@ class MemberServiceUnitTest {
     @Test
     void givenStatusAndGymIds_whenListMembersByStatus_thenReturnsFilteredMembers() {
         // Given
-        when(memberRepository.findByStatusAndGymIdIn(MembershipStatus.ACTIVE, List.of(gymId))).thenReturn(List.of(member));
+        when(memberRepository.findByStatusAndGymIdIn(eq(MembershipStatus.ACTIVE), eq(List.of(gymId)), any())).thenReturn(List.of(member));
 
         // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of(gymId));
@@ -272,7 +279,7 @@ class MemberServiceUnitTest {
     @Test
     void givenStatusWithoutGymIds_whenListMembersByStatus_thenReturnsAllMembersWithStatus() {
         // Given
-        when(memberRepository.findByStatus(MembershipStatus.ACTIVE)).thenReturn(List.of(member));
+        when(memberRepository.findByStatus(eq(MembershipStatus.ACTIVE), any())).thenReturn(List.of(member));
 
         // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, null);
@@ -285,7 +292,7 @@ class MemberServiceUnitTest {
     @Test
     void givenEmptyGymIdsList_whenListMembersByStatus_thenReturnsAllMembersWithStatus() {
         // Given
-        when(memberRepository.findByStatus(MembershipStatus.ACTIVE)).thenReturn(List.of(member));
+        when(memberRepository.findByStatus(eq(MembershipStatus.ACTIVE), any())).thenReturn(List.of(member));
 
         // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, Collections.emptyList());

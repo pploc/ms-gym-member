@@ -42,6 +42,9 @@ public class MemberService {
 
     @Transactional
     public MemberDto createMemberShell(String userId, String fullName, String gymId) {
+        if (fullName == null || fullName.isBlank()) {
+            throw new IllegalArgumentException("fullName is required and cannot be blank");
+        }
         if (gymId == null || gymId.isBlank()) {
             throw new IllegalArgumentException("gymId is required and cannot be blank");
         }
@@ -56,7 +59,7 @@ public class MemberService {
         MemberEntity entity = new MemberEntity();
         entity.setUserId(userId);
         entity.setGymId(gymLocation.getId());
-        entity.setFullName(fullName != null && !fullName.isBlank() ? fullName : "Member " + userId.substring(0, Math.min(8, userId.length())));
+        entity.setFullName(fullName);
         entity.setStatus(MembershipStatus.NONE);
 
         MemberEntity saved = memberRepository.save(entity);
@@ -96,13 +99,16 @@ public class MemberService {
         );
     }
 
+    private static final int MAX_UNBOUNDED_RESULT_LIMIT = 1000;
+
     @Transactional(readOnly = true)
     public List<MemberDto> listMembersByStatus(MembershipStatus status, List<String> gymIds) {
+        PageRequest safetyLimit = PageRequest.of(0, MAX_UNBOUNDED_RESULT_LIMIT);
         List<MemberEntity> entities;
         if (gymIds != null && !gymIds.isEmpty()) {
-            entities = memberRepository.findByStatusAndGymIdIn(status, gymIds);
+            entities = memberRepository.findByStatusAndGymIdIn(status, gymIds, safetyLimit);
         } else {
-            entities = memberRepository.findByStatus(status);
+            entities = memberRepository.findByStatus(status, safetyLimit);
         }
         return entities.stream().map(memberMapper::toDto).toList();
     }

@@ -9,7 +9,10 @@ import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaReposi
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
 import com.gym.member.application.port.in.SubscriptionActivationUseCase;
 import com.gym.member.config.MemberProperties;
+import com.gym.member.domain.constant.MemberEventTopics;
 import com.gym.member.domain.dto.SubscriptionDto;
+import com.gym.member.domain.exception.InactivePlanException;
+import com.gym.member.domain.exception.PlanGymMismatchException;
 import com.gym.member.domain.exception.PlanSwitchNotAllowedException;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.member.domain.model.PlanType;
@@ -39,8 +42,11 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
     private final SubscriptionMapper subscriptionMapper;
     private final Clock clock;
 
+    @Override
     @Transactional
     public SubscriptionDto activateOrRenewSubscription(String memberId, String planId) {
+        log.info("Activating or renewing subscription for member: {}, plan: {}", memberId, planId);
+
         MemberEntity member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found: " + memberId));
 
@@ -48,10 +54,10 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
                 .orElseThrow(() -> new NotFoundException("Membership plan not found: " + planId));
 
         if (!plan.isActive()) {
-            throw new IllegalArgumentException("Membership plan is inactive: " + planId);
+            throw new InactivePlanException("Membership plan is inactive: " + planId);
         }
         if (!member.getGymId().equals(plan.getGymId())) {
-            throw new IllegalArgumentException("Membership plan does not belong to the member's gym");
+            throw new PlanGymMismatchException("Membership plan does not belong to the member's gym");
         }
 
         LocalDate today = LocalDate.now(clock);
@@ -71,14 +77,12 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
             }
 
             isRenewal = true;
-            int defaultDays = memberProperties.subscription().defaultDurationDays();
             if (plan.getPlanType() == PlanType.LIFETIME) {
                 sub.setEndDate(null);
-            } else if (sub.getEndDate() != null && sub.getEndDate().isAfter(today)) {
-                sub.setEndDate(sub.getEndDate().plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : defaultDays));
             } else {
-                sub.setStartDate(today);
-                sub.setEndDate(today.plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : defaultDays));
+                int addDays = plan.getDurationDays() != null ? plan.getDurationDays() : memberProperties.subscription().defaultDurationDays();
+                LocalDate baseDate = (sub.getEndDate() != null && sub.getEndDate().isAfter(today)) ? sub.getEndDate() : today;
+                sub.setEndDate(baseDate.plusDays(addDays));
             }
             sub.setPausedAt(null);
             sub.setRemainingDays(null);
@@ -99,7 +103,7 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
         memberRepository.save(member);
 
         MembershipActivatedEvent event = eventFactory.createActivatedEvent(member, savedSub, plan, isRenewal, clock);
-        outboxEventWriter.write("member", member.getId(), "membership.activated", event);
+        outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_ACTIVATED, event);
 
         return subscriptionMapper.toDto(savedSub);
     }

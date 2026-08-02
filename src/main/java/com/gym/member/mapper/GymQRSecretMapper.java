@@ -10,7 +10,7 @@ import org.mapstruct.ReportingPolicy;
 
 import java.util.UUID;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "spring", uses = {CommonMapperUtils.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface GymQRSecretMapper {
 
     @Mapping(target = "gymId", source = "gymId", qualifiedByName = "toUuid")
@@ -18,9 +18,4 @@ public interface GymQRSecretMapper {
 
     @Mapping(target = "dailySecret", source = "dailySecret")
     GymDailySecretResponse toResponse(GymDailySecretDto dto);
-
-    @Named("toUuid")
-    default UUID toUuid(String str) {
-        return str != null ? UUID.fromString(str) : null;
-    }
 }

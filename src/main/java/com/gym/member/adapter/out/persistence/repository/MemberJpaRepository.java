@@ -16,5 +16,7 @@ public interface MemberJpaRepository extends JpaRepository<MemberEntity, String>
     Optional<MemberEntity> findByUserId(String userId);
     Page<MemberEntity> findByGymId(String gymId, Pageable pageable);
     List<MemberEntity> findByStatusAndGymIdIn(MembershipStatus status, List<String> gymIds);
+    List<MemberEntity> findByStatusAndGymIdIn(MembershipStatus status, List<String> gymIds, Pageable pageable);
     List<MemberEntity> findByStatus(MembershipStatus status);
+    List<MemberEntity> findByStatus(MembershipStatus status, Pageable pageable);
 }

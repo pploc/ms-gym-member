@@ -4,12 +4,12 @@ import com.gym.common.error.NotFoundException;
 import com.gym.common.grpc.security.GrpcSecurityContext;
 import com.gym.common.grpc.security.UserClaims;
 import com.gym.common.pagination.NormalPage;
-import com.gym.member.adapter.in.grpc.MemberGrpcHandler;
+import com.gym.member.adapter.in.grpc.*;
 import com.gym.member.adapter.out.grpc.PaymentGrpcClient;
+import com.gym.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.application.service.GymLocationService;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.application.service.MemberService;
-import com.gym.member.application.service.SubscriptionService;
 import com.gym.member.domain.dto.GymDailySecretDto;
 import com.gym.member.domain.dto.GymLocationDto;
 import com.gym.member.domain.dto.MemberDto;
@@ -50,7 +50,7 @@ class MemberGrpcHandlerUnitTest {
     private MemberService memberService;
 
     @Mock
-    private SubscriptionService subscriptionService;
+    private SubscriptionLifecycleUseCase subscriptionLifecycleUseCase;
 
     @Mock
     private GymLocationService gymLocationService;
@@ -76,7 +76,9 @@ class MemberGrpcHandlerUnitTest {
     @Spy
     private GymQRSecretMapper gymQRSecretMapper = Mappers.getMapper(GymQRSecretMapper.class);
 
-    @InjectMocks
+    private MemberGrpcDelegate memberGrpcDelegate;
+    private SubscriptionGrpcDelegate subscriptionGrpcDelegate;
+    private GymLocationGrpcDelegate gymLocationGrpcDelegate;
     private MemberGrpcHandler memberGrpcHandler;
 
     private UUID memberId;
@@ -93,6 +95,11 @@ class MemberGrpcHandlerUnitTest {
         chainId = UUID.randomUUID();
 
         memberDto = new MemberDto(memberId, userId, gymId, "John Doe", "123456", "http://avatar", LocalDate.of(1995, 5, 15), MembershipStatus.ACTIVE, null, null);
+
+        memberGrpcDelegate = new MemberGrpcDelegate(memberService, memberMapper);
+        subscriptionGrpcDelegate = new SubscriptionGrpcDelegate(memberService, subscriptionLifecycleUseCase, paymentGrpcClient, subscriptionMapper);
+        gymLocationGrpcDelegate = new GymLocationGrpcDelegate(gymLocationService, gymQRService, gymLocationMapper, gymQRSecretMapper);
+        memberGrpcHandler = new MemberGrpcHandler(memberGrpcDelegate, subscriptionGrpcDelegate, gymLocationGrpcDelegate);
     }
 
     private void runWithClaims(String uId, String role, String gId, Runnable action) {
@@ -260,7 +267,7 @@ class MemberGrpcHandlerUnitTest {
         PauseMembershipRequest request = PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.PAUSED, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionService.pauseSubscription(memberId.toString())).thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.pauseSubscription(memberId.toString())).thenReturn(subDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.pauseMembership(request, responseObserver);
@@ -274,7 +281,7 @@ class MemberGrpcHandlerUnitTest {
     void givenErrorOnPauseMembership_whenPauseMembership_thenCallsOnError() {
         PauseMembershipRequest request = PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionService.pauseSubscription(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.pauseSubscription(any())).thenThrow(new RuntimeException("Error"));
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.pauseMembership(request, responseObserver);
@@ -288,7 +295,7 @@ class MemberGrpcHandlerUnitTest {
         ResumeMembershipRequest request = ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionService.resumeSubscription(memberId.toString())).thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.resumeSubscription(memberId.toString())).thenReturn(subDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.resumeMembership(request, responseObserver);
@@ -302,7 +309,7 @@ class MemberGrpcHandlerUnitTest {
     void givenErrorOnResumeMembership_whenResumeMembership_thenCallsOnError() {
         ResumeMembershipRequest request = ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionService.resumeSubscription(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.resumeSubscription(any())).thenThrow(new RuntimeException("Error"));
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.resumeMembership(request, responseObserver);
@@ -316,7 +323,7 @@ class MemberGrpcHandlerUnitTest {
         GetMembershipStatusRequest request = GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionService.getActiveSubscription(memberId.toString())).thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.getActiveSubscription(memberId.toString())).thenReturn(subDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.getMembershipStatus(request, responseObserver);
@@ -330,7 +337,7 @@ class MemberGrpcHandlerUnitTest {
     void givenErrorOnGetMembershipStatus_whenGetMembershipStatus_thenCallsOnError() {
         GetMembershipStatusRequest request = GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionService.getActiveSubscription(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.getActiveSubscription(any())).thenThrow(new RuntimeException("Error"));
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.getMembershipStatus(request, responseObserver);

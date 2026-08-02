@@ -44,6 +44,8 @@ public class EventConsumerAdapter {
         ack.acknowledge();
     }
 
+    private static final String LEGACY_EVENT_ID_PREFIX = "legacy:";
+
     private String resolveEventId(EventEnvelope<?> envelope) {
         if (envelope.eventId() != null && !envelope.eventId().isBlank()) {
             return envelope.eventId();
@@ -51,7 +53,7 @@ public class EventConsumerAdapter {
         if (properties.requireEventId()) {
             throw new IllegalArgumentException("Event envelope missing required event_id for strict DLT processing");
         }
-        String fallbackId = "legacy:" + envelope.source() + ":" + envelope.eventType() + ":" + envelope.key() + ":" + envelope.timestamp();
+        String fallbackId = LEGACY_EVENT_ID_PREFIX + envelope.source() + ":" + envelope.eventType() + ":" + envelope.key() + ":" + envelope.timestamp();
         log.warn("Missing event_id in event envelope; using metered compatibility fallback event ID: {}", fallbackId);
         return fallbackId;
     }
