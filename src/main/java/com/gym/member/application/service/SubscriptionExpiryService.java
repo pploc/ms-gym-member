@@ -6,6 +6,7 @@ import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.application.port.in.SubscriptionExpiryUseCase;
 import com.gym.member.adapter.out.persistence.specification.SubscriptionSpecifications;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.model.MembershipStatus;
@@ -26,7 +27,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SubscriptionExpiryService {
+public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
 
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;

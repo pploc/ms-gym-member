@@ -7,6 +7,7 @@ import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.application.port.in.SubscriptionActivationUseCase;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.PlanSwitchNotAllowedException;
@@ -27,7 +28,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SubscriptionActivationService {
+public class SubscriptionActivationService implements SubscriptionActivationUseCase {
 
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;

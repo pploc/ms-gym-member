@@ -7,6 +7,7 @@ import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
@@ -27,7 +28,7 @@ import java.time.LocalDate;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SubscriptionLifecycleService {
+public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCase {
 
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;
