@@ -25,8 +25,7 @@ import java.util.UUID;
 public class OutboxEventEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    private UUID id = UUID.randomUUID();
 
     @Column(name = "aggregate_type", nullable = false)
     private String aggregateType;

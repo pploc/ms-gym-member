@@ -41,4 +41,10 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
     ) {
         return findReady(now, pending, inFlight, Pageable.ofSize(batchSize));
     }
+
+    boolean existsByAggregateIdAndEventTypeAndCreatedAtGreaterThanEqual(
+            String aggregateId,
+            String eventType,
+            Instant since
+    );
 }
