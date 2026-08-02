@@ -10,6 +10,11 @@ permissions:
   contents: read
   packages: write
 
+env:
+  READ_PACKAGES_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN }}
+  GPR_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+
 jobs:
   java-ci:
     uses: pploc/gym-infra/.github/workflows/reusable-java-ci.yml@develop
