@@ -15,10 +15,6 @@ java {
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.release = 26
-}
-
 def gprUser = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user") ?: "pploc"
 def gprKey = System.getenv("GITHUB_TOKEN") 
         ?: System.getenv("READ_PACKAGES_TOKEN") 
@@ -33,26 +29,24 @@ if (gprKey == null || gprKey.isEmpty()) {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
-    maven {
-        url = uri("https://maven.pkg.github.com/pploc/gym-proto")
-        credentials {
-            username = gprUser
-            password = gprKey
-        }
-    }
-    maven {
-        url = uri("https://maven.pkg.github.com/pploc/common-java")
-        credentials {
-            username = gprUser
-            password = gprKey
+    ['gym-proto', 'common-java'].each { repo ->
+        maven {
+            url = uri("https://maven.pkg.github.com/pploc/${repo}")
+            credentials {
+                username = gprUser
+                password = gprKey
+            }
         }
     }
 }
 
+def mapstructVersion = '1.6.3'
+def grpcVersion = '1.68.1'
+def testcontainersVersion = '1.20.1'
+
 dependencies {
-    implementation 'com.gym:common-java:1.0.1' // local development resolves the updated event-envelope contract from mavenLocal()
+    implementation 'com.gym:common-java:1.0.1'
     implementation 'com.gym.proto:gym-proto-java:1.0.2'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -68,23 +62,22 @@ dependencies {
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
-    implementation 'org.mapstruct:mapstruct:1.6.3'
-    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
+    ['compileOnly', 'annotationProcessor', 'testCompileOnly', 'testAnnotationProcessor'].each {
+        add(it, 'org.projectlombok:lombok')
+    }
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
-    testImplementation 'io.grpc:grpc-testing:1.68.1'
-    testImplementation 'io.grpc:grpc-inprocess:1.68.1'
+    testImplementation "io.grpc:grpc-testing:${grpcVersion}"
+    testImplementation "io.grpc:grpc-inprocess:${grpcVersion}"
     testRuntimeOnly 'com.h2database:h2'
-    testImplementation 'org.testcontainers:junit-jupiter:1.20.1'
-    testImplementation 'org.testcontainers:postgresql:1.20.1'
-    testImplementation 'org.testcontainers:kafka:1.20.1'
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
+    testImplementation "org.testcontainers:kafka:${testcontainersVersion}"
 }
 
 def jacocoExcludes = [
@@ -110,20 +103,10 @@ jacocoTestReport {
         xml.required = true
         html.required = true
     }
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: jacocoExcludes)
-        }))
-    }
 }
 
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: jacocoExcludes)
-        }))
-    }
     violationRules {
         rule {
             element = 'BUNDLE'
@@ -133,6 +116,14 @@ jacocoTestCoverageVerification {
                 minimum = 0.95
             }
         }
+    }
+}
+
+afterEvaluate {
+    [jacocoTestReport, jacocoTestCoverageVerification].each { task ->
+        task.classDirectories.setFrom(files(task.classDirectories.files.collect {
+            fileTree(dir: it, exclude: jacocoExcludes)
+        }))
     }
 }
 
@@ -166,7 +157,3 @@ tasks.register('seedTestEvents', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.gym.member.util.TestEventSeeder'
 }
-
-
-
-

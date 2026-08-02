@@ -20,7 +20,7 @@ public class EventConsumerAdapter {
     private final MemberEventProcessingService eventProcessingService;
     private final MemberProperties properties;
 
-    @KafkaListener(topics = "${gym.kafka.topics.user-registered:identity.user.registered}")
+    @KafkaListener(topics = "${gym.kafka.topics.user-registered:identity.user.registered}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
     public void handleUserRegistered(EventEnvelope<UserRegisteredEvent> envelope, Acknowledgment ack) {
         String eventId = resolveEventId(envelope);
         log.info("Received user registered event, key: {}, eventId: {}", envelope.key(), eventId);
@@ -28,7 +28,7 @@ public class EventConsumerAdapter {
         ack.acknowledge();
     }
 
-    @KafkaListener(topics = "${gym.kafka.topics.payment-completed:payment.completed}")
+    @KafkaListener(topics = "${gym.kafka.topics.payment-completed:payment.completed}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
     public void handlePaymentCompleted(EventEnvelope<PaymentCompletedEvent> envelope, Acknowledgment ack) {
         String eventId = resolveEventId(envelope);
         log.info("Received payment.completed event, key: {}, eventId: {}", envelope.key(), eventId);
@@ -36,7 +36,7 @@ public class EventConsumerAdapter {
         ack.acknowledge();
     }
 
-    @KafkaListener(topics = "${gym.kafka.topics.user-suspended:identity.user.suspended}")
+    @KafkaListener(topics = "${gym.kafka.topics.user-suspended:identity.user.suspended}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
     public void handleUserSuspended(EventEnvelope<UserSuspendedEvent> envelope, Acknowledgment ack) {
         String eventId = resolveEventId(envelope);
         log.info("Received user suspended event, key: {}, eventId: {}", envelope.key(), eventId);
@@ -47,8 +47,8 @@ public class EventConsumerAdapter {
     private static final String LEGACY_EVENT_ID_PREFIX = "legacy:";
 
     private String resolveEventId(EventEnvelope<?> envelope) {
-        if (envelope.eventId() != null && !envelope.eventId().isBlank()) {
-            return envelope.eventId();
+        if (envelope.traceId() != null && !envelope.traceId().isBlank()) {
+            return envelope.traceId();
         }
         if (properties.requireEventId()) {
             throw new IllegalArgumentException("Event envelope missing required event_id for strict DLT processing");

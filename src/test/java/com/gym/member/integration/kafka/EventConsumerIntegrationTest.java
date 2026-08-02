@@ -69,7 +69,7 @@ class EventConsumerIntegrationTest {
                 .build();
 
         EventEnvelope<UserRegisteredEvent> envelope = new EventEnvelope<>(
-                "identity.user.registered", userId, payload, System.currentTimeMillis(), "trace-123", "user-service", eventId
+                "identity.user.registered", userId, payload, System.currentTimeMillis(), eventId, "user-service"
         );
 
         Acknowledgment ack = mock(Acknowledgment.class);

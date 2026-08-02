@@ -41,7 +41,7 @@ public class OutboxPublisherScheduler {
             String key = event.getKafkaKey() != null && !event.getKafkaKey().isBlank()
                     ? event.getKafkaKey()
                     : event.getAggregateId();
-            eventPublisher.publish(event.getTopic(), key, payload, event.getId().toString(), Map.of());
+            eventPublisher.publish(event.getTopic(), key, payload, Map.of("eventId", event.getId().toString()));
             outboxRelayService.markPublished(event.getId());
         } catch (Exception e) {
             outboxRelayService.markFailedOrRetry(event.getId(), e);

@@ -57,7 +57,7 @@ class EventConsumerAdapterUnitTest {
                 .build();
 
         EventEnvelope<UserRegisteredEvent> envelope = new EventEnvelope<>(
-                "identity.user.registered", userId, payload, System.currentTimeMillis(), "trace-123", "user-service", eventId
+                "identity.user.registered", userId, payload, System.currentTimeMillis(), eventId, "user-service"
         );
 
         when(eventProcessingService.processUserRegistered(eq(eventId), eq("identity.user.registered"), eq(payload)))
@@ -82,7 +82,7 @@ class EventConsumerAdapterUnitTest {
                 .build();
 
         EventEnvelope<PaymentCompletedEvent> envelope = new EventEnvelope<>(
-                "payment.completed", userId, payload, System.currentTimeMillis(), "trace-123", "payment-service", eventId
+                "payment.completed", userId, payload, System.currentTimeMillis(), eventId, "payment-service"
         );
 
         when(eventProcessingService.processPaymentCompleted(eq(eventId), eq("payment.completed"), eq(payload), eq(userId)))
@@ -104,7 +104,7 @@ class EventConsumerAdapterUnitTest {
                 .build();
 
         EventEnvelope<UserSuspendedEvent> envelope = new EventEnvelope<>(
-                "identity.user.suspended", userId, payload, System.currentTimeMillis(), "trace-123", "user-service", eventId
+                "identity.user.suspended", userId, payload, System.currentTimeMillis(), eventId, "user-service"
         );
 
         when(eventProcessingService.processUserSuspended(eq(eventId), eq("identity.user.suspended"), eq(payload)))
@@ -123,7 +123,7 @@ class EventConsumerAdapterUnitTest {
         // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder().setUserId(userId).build();
         EventEnvelope<UserRegisteredEvent> envelope = new EventEnvelope<>(
-                "identity.user.registered", userId, payload, System.currentTimeMillis(), "trace-123", "user-service"
+                "identity.user.registered", userId, payload, System.currentTimeMillis(), null, "user-service"
         );
 
         when(properties.requireEventId()).thenReturn(true);

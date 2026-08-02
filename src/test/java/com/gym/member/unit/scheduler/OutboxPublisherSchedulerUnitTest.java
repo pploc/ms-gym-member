@@ -75,7 +75,7 @@ class OutboxPublisherSchedulerUnitTest {
         scheduler.processOutboxEvents();
 
         // Then
-        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("agg-123"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
+        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("agg-123"), eq(mockMessage), anyMap());
         verify(outboxRelayService, times(1)).markPublished(outboxEvent.getId());
     }
 
