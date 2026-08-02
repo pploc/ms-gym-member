@@ -19,21 +19,30 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 26
 }
 
+def gprUser = project.findProperty("gpr.user") ?: System.getenv("GPR_USER") ?: System.getenv("GITHUB_ACTOR") ?: "pploc"
+def gprKey = project.findProperty("gpr.key") ?: System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+
+if (gprKey == null || gprKey.isEmpty()) {
+    logger.quiet("WARNING: GitHub Packages token is NULL or EMPTY! Authentication to https://maven.pkg.github.com will fail with 401 Unauthorized.")
+} else {
+    logger.quiet("GitHub Packages auth: username='{}', token present (length={})", gprUser, gprKey.length())
+}
+
 repositories {
     mavenLocal()
     mavenCentral()
     maven {
         url 'https://maven.pkg.github.com/pploc/gym-proto'
         credentials {
-            username = project.findProperty("gpr.user") ?: System.getenv("GPR_USER") ?: "pploc"
-            password = project.findProperty("gpr.key") ?: System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+            username = gprUser
+            password = gprKey
         }
     }
     maven {
         url 'https://maven.pkg.github.com/pploc/common-java'
         credentials {
-            username = project.findProperty("gpr.user") ?: System.getenv("GPR_USER") ?: "pploc"
-            password = project.findProperty("gpr.key") ?: System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+            username = gprUser
+            password = gprKey
         }
     }
 }
