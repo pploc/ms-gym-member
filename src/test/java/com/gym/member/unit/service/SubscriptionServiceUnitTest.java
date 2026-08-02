@@ -145,6 +145,24 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
+    void givenCrossGymPlan_whenActivateOrRenewSubscription_thenThrowsIllegalArgumentException() {
+        // Given
+        MembershipPlanEntity otherGymPlan = new MembershipPlanEntity();
+        otherGymPlan.setId(planId);
+        otherGymPlan.setGymId(UUID.randomUUID().toString()); // Different Gym ID
+        otherGymPlan.setActive(true);
+
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(planRepository.findById(planId)).thenReturn(Optional.of(otherGymPlan));
+
+        // When & Then
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                subscriptionService.activateOrRenewSubscription(memberId, planId)
+        );
+        assertEquals("Membership plan does not belong to the member's gym", ex.getMessage());
+    }
+
+    @Test
     void givenActiveSubscription_whenActivateOrRenewSubscription_thenExtendsEndDateAndPublishesEvent() {
         // Given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
