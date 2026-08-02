@@ -80,16 +80,24 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     private final GymQRSecretMapper gymQRSecretMapper;
 
     private void handleError(StreamObserver<?> responseObserver, Exception e) {
-        log.error("gRPC error: {}", e.getMessage(), e);
+        String traceId = org.slf4j.MDC.get("traceId");
+        if (traceId == null || traceId.isBlank()) {
+            traceId = java.util.UUID.randomUUID().toString();
+        }
+
         Status status;
         if (e instanceof NotFoundException) {
+            log.warn("gRPC client error [NotFound]: {}", e.getMessage());
             status = Status.NOT_FOUND.withDescription(e.getMessage());
         } else if (e instanceof IllegalArgumentException || e instanceof java.time.DateTimeException) {
+            log.warn("gRPC client error [InvalidArgument]: {}", e.getMessage());
             status = Status.INVALID_ARGUMENT.withDescription(e.getMessage());
         } else if (e instanceof DomainException) {
+            log.warn("gRPC client error [FailedPrecondition]: {}", e.getMessage());
             status = Status.FAILED_PRECONDITION.withDescription(e.getMessage());
         } else {
-            status = Status.INTERNAL.withDescription(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            log.error("gRPC unexpected internal error [traceId={}]: {}", traceId, e.getMessage(), e);
+            status = Status.INTERNAL.withDescription("An unexpected internal server error occurred. Ref: " + traceId);
         }
         responseObserver.onError(status.asRuntimeException());
     }
