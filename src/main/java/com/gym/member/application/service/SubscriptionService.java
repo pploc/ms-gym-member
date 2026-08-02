@@ -1,7 +1,7 @@
 package com.gym.member.application.service;
 
+import com.gym.common.error.DomainException;
 import com.gym.common.error.NotFoundException;
-import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
@@ -13,6 +13,7 @@ import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
 import com.gym.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.domain.exception.MaxPausesExceededException;
+import com.gym.member.domain.exception.PlanSwitchNotAllowedException;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.member.domain.model.PlanType;
 import com.gym.member.mapper.SubscriptionMapper;
@@ -26,12 +27,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -41,9 +41,11 @@ public class SubscriptionService {
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;
     private final MembershipPlanJpaRepository planRepository;
-    private final EventPublisher eventPublisher;
+    private final OutboxEventWriter outboxEventWriter;
+    private final MembershipEventFactory eventFactory;
     private final MemberProperties memberProperties;
     private final SubscriptionMapper subscriptionMapper;
+    private final Clock clock;
 
     @Transactional
     public SubscriptionDto activateOrRenewSubscription(String memberId, String planId) {
@@ -53,16 +55,30 @@ public class SubscriptionService {
         MembershipPlanEntity plan = planRepository.findById(planId)
                 .orElseThrow(() -> new NotFoundException("Membership plan not found: " + planId));
 
-        LocalDate today = LocalDate.now();
-        Optional<SubscriptionEntity> activeSubOpt = subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE);
+        if (!plan.isActive()) {
+            throw new IllegalArgumentException("Membership plan is inactive: " + planId);
+        }
+        if (!member.getGymId().equals(plan.getGymId())) {
+            throw new IllegalArgumentException("Membership plan does not belong to the member's gym");
+        }
+
+        LocalDate today = LocalDate.now(clock);
+
+        Optional<SubscriptionEntity> currentSubOpt = subscriptionRepository.findCurrentForUpdate(
+                memberId,
+                List.of(MembershipStatus.ACTIVE, MembershipStatus.PAUSED)
+        );
 
         SubscriptionEntity sub;
         boolean isRenewal = false;
 
-        if (activeSubOpt.isPresent()) {
-            sub = activeSubOpt.get();
-            isRenewal = true;
+        if (currentSubOpt.isPresent()) {
+            sub = currentSubOpt.get();
+            if (!sub.getPlanId().equals(planId)) {
+                throw new PlanSwitchNotAllowedException("Cannot switch plan on an active or paused subscription; plan changes are permitted only after expiration.");
+            }
 
+            isRenewal = true;
             int defaultDays = memberProperties.subscription().defaultDurationDays();
             if (plan.getPlanType() == PlanType.LIFETIME) {
                 sub.setEndDate(null);
@@ -72,6 +88,8 @@ public class SubscriptionService {
                 sub.setStartDate(today);
                 sub.setEndDate(today.plusDays(plan.getDurationDays() != null ? plan.getDurationDays() : defaultDays));
             }
+            sub.setPausedAt(null);
+            sub.setRemainingDays(null);
         } else {
             int defaultDays = memberProperties.subscription().defaultDurationDays();
             sub = new SubscriptionEntity();
@@ -88,19 +106,8 @@ public class SubscriptionService {
         member.setStatus(MembershipStatus.ACTIVE);
         memberRepository.save(member);
 
-        // Publish Event
-        MembershipActivatedEvent event = MembershipActivatedEvent.newBuilder()
-                .setMemberId(member.getId())
-                .setUserId(member.getUserId())
-                .setPlanType(plan.getPlanType().name())
-                .setStartDate(savedSub.getStartDate().toString())
-                .setEndDate(savedSub.getEndDate() != null ? savedSub.getEndDate().toString() : "")
-                .setGymId(member.getGymId())
-                .setIsRenewal(isRenewal)
-                .setTimestamp(Instant.now().toEpochMilli())
-                .build();
-
-        eventPublisher.publish("membership.activated", member.getId(), event);
+        MembershipActivatedEvent event = eventFactory.createActivatedEvent(member, savedSub, plan, isRenewal, clock);
+        outboxEventWriter.write("member", member.getId(), "membership.activated", event);
 
         return subscriptionMapper.toDto(savedSub);
     }
@@ -125,8 +132,8 @@ public class SubscriptionService {
             throw new MaxPausesExceededException("Maximum allowed pauses (" + maxPauses + ") reached for this subscription cycle.");
         }
 
-        LocalDate today = LocalDate.now();
-        int remainingDays = (sub.getEndDate() != null) ? (int) ChronoUnit.DAYS.between(today, sub.getEndDate()) : 0;
+        LocalDate today = LocalDate.now(clock);
+        int remainingDays = (sub.getEndDate() != null) ? (int) java.time.temporal.ChronoUnit.DAYS.between(today, sub.getEndDate()) : 0;
         if (remainingDays < 0) remainingDays = 0;
 
         sub.setStatus(MembershipStatus.PAUSED);
@@ -139,15 +146,8 @@ public class SubscriptionService {
         member.setStatus(MembershipStatus.PAUSED);
         memberRepository.save(member);
 
-        // Publish Event
-        MembershipPausedEvent event = MembershipPausedEvent.newBuilder()
-                .setMemberId(member.getId())
-                .setPausedAt(today.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
-                .setRemainingDays(remainingDays)
-                .setGymId(member.getGymId())
-                .build();
-
-        eventPublisher.publish("membership.paused", member.getId(), event);
+        MembershipPausedEvent event = eventFactory.createPausedEvent(member, remainingDays, today);
+        outboxEventWriter.write("member", member.getId(), "membership.paused", event);
 
         return subscriptionMapper.toDto(savedSub);
     }
@@ -160,7 +160,7 @@ public class SubscriptionService {
         SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)
                 .orElseThrow(() -> new NotFoundException("Paused subscription not found for member: " + memberId));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         int remainingDays = sub.getRemainingDays() != null ? sub.getRemainingDays() : 0;
         LocalDate newEndDate = today.plusDays(remainingDays);
 
@@ -174,14 +174,8 @@ public class SubscriptionService {
         member.setStatus(MembershipStatus.ACTIVE);
         memberRepository.save(member);
 
-        // Publish Event
-        MembershipResumedEvent event = MembershipResumedEvent.newBuilder()
-                .setMemberId(member.getId())
-                .setNewEndDate(newEndDate.toString())
-                .setGymId(member.getGymId())
-                .build();
-
-        eventPublisher.publish("membership.resumed", member.getId(), event);
+        MembershipResumedEvent event = eventFactory.createResumedEvent(member, newEndDate);
+        outboxEventWriter.write("member", member.getId(), "membership.resumed", event);
 
         return subscriptionMapper.toDto(savedSub);
     }
@@ -196,27 +190,27 @@ public class SubscriptionService {
 
     @Transactional
     public void processExpiredSubscriptions() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         List<SubscriptionEntity> expiredSubs = subscriptionRepository.findAll(
                 SubscriptionSpecifications.isExpiredActive(today)
         );
+        if (expiredSubs.isEmpty()) return;
+
+        Set<String> memberIds = expiredSubs.stream().map(SubscriptionEntity::getMemberId).collect(java.util.stream.Collectors.toSet());
+        List<MemberEntity> members = memberRepository.findAllById(memberIds);
+        java.util.Map<String, MemberEntity> memberMap = members.stream().collect(java.util.stream.Collectors.toMap(MemberEntity::getId, m -> m));
+
         for (SubscriptionEntity sub : expiredSubs) {
             sub.setStatus(MembershipStatus.EXPIRED);
             subscriptionRepository.save(sub);
 
-            Optional<MemberEntity> memberOpt = memberRepository.findById(sub.getMemberId());
-            if (memberOpt.isPresent()) {
-                MemberEntity member = memberOpt.get();
+            MemberEntity member = memberMap.get(sub.getMemberId());
+            if (member != null) {
                 member.setStatus(MembershipStatus.EXPIRED);
                 memberRepository.save(member);
 
-                MembershipExpiredEvent event = MembershipExpiredEvent.newBuilder()
-                        .setMemberId(member.getId())
-                        .setExpiredAt(Instant.now().toEpochMilli())
-                        .setGymId(member.getGymId())
-                        .build();
-
-                eventPublisher.publish("membership.expired", member.getId(), event);
+                MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, clock);
+                outboxEventWriter.write("member", member.getId(), "membership.expired", event);
             }
         }
     }
@@ -224,25 +218,26 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public void processExpiringSoonWarnings() {
         int warningDays = memberProperties.subscription().warningNoticeDays();
-        LocalDate warningDate = LocalDate.now().plusDays(warningDays);
+        LocalDate warningDate = LocalDate.now(clock).plusDays(warningDays);
         List<SubscriptionEntity> warningSubs = subscriptionRepository.findAll(
                 SubscriptionSpecifications.isExpiringSoon(warningDate)
         );
+        if (warningSubs.isEmpty()) return;
+
+        Set<String> memberIds = warningSubs.stream().map(SubscriptionEntity::getMemberId).collect(java.util.stream.Collectors.toSet());
+        Set<String> planIds = warningSubs.stream().map(SubscriptionEntity::getPlanId).collect(java.util.stream.Collectors.toSet());
+
+        java.util.Map<String, MemberEntity> memberMap = memberRepository.findAllById(memberIds).stream()
+                .collect(java.util.stream.Collectors.toMap(MemberEntity::getId, m -> m));
+        java.util.Map<String, MembershipPlanEntity> planMap = planRepository.findAllById(planIds).stream()
+                .collect(java.util.stream.Collectors.toMap(MembershipPlanEntity::getId, p -> p));
+
         for (SubscriptionEntity sub : warningSubs) {
-            Optional<MemberEntity> memberOpt = memberRepository.findById(sub.getMemberId());
-            Optional<MembershipPlanEntity> planOpt = planRepository.findById(sub.getPlanId());
-            if (memberOpt.isPresent() && planOpt.isPresent()) {
-                MemberEntity member = memberOpt.get();
-                MembershipPlanEntity plan = planOpt.get();
-
-                MembershipExpiringSoonEvent event = MembershipExpiringSoonEvent.newBuilder()
-                        .setMemberId(member.getId())
-                        .setEndDate(sub.getEndDate() != null ? sub.getEndDate().toString() : "")
-                        .setPlanType(plan.getPlanType().name())
-                        .setGymId(member.getGymId())
-                        .build();
-
-                eventPublisher.publish("membership.expiring-soon", member.getId(), event);
+            MemberEntity member = memberMap.get(sub.getMemberId());
+            MembershipPlanEntity plan = planMap.get(sub.getPlanId());
+            if (member != null && plan != null) {
+                MembershipExpiringSoonEvent event = eventFactory.createExpiringSoonEvent(member, sub, plan);
+                outboxEventWriter.write("member", member.getId(), "membership.expiring-soon", event);
             }
         }
     }
@@ -268,13 +263,8 @@ public class SubscriptionService {
             subscriptionRepository.save(sub);
             log.info("Cancelled subscription id {} for suspended user: {}", sub.getId(), userId);
 
-            MembershipExpiredEvent event = MembershipExpiredEvent.newBuilder()
-                    .setMemberId(member.getId())
-                    .setExpiredAt(Instant.now().toEpochMilli())
-                    .setGymId(member.getGymId())
-                    .build();
-
-            eventPublisher.publish("membership.expired", member.getId(), event);
+            MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, clock);
+            outboxEventWriter.write("member", member.getId(), "membership.expired", event);
         }
 
         log.info("Successfully suspended member id {} for userId: {}", member.getId(), userId);

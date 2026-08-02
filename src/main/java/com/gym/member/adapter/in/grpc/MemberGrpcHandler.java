@@ -2,8 +2,18 @@ package com.gym.member.adapter.in.grpc;
 
 import com.gym.common.error.DomainException;
 import com.gym.common.error.NotFoundException;
+import com.gym.common.grpc.security.RequireRole;
+import com.gym.common.grpc.security.GrpcSecurityContext;
+import com.gym.proto.payment.v1.InitiatePaymentRequest;
+import com.gym.proto.payment.v1.InitiatePaymentResponse;
+import com.gym.proto.payment.v1.PaymentServiceGrpc;
 import com.gym.common.pagination.NormalPage;
+import com.gym.member.adapter.out.grpc.PaymentGrpcClient;
 import com.gym.member.application.service.GymLocationService;
+import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGym;
+import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGymIds;
+import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireSelf;
+import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireServiceGym;
 import com.gym.member.application.service.GymQRService;
 import com.gym.member.application.service.MemberService;
 import com.gym.member.application.service.SubscriptionService;
@@ -62,6 +72,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     private final SubscriptionService subscriptionService;
     private final GymLocationService gymLocationService;
     private final GymQRService gymQRService;
+    private final PaymentGrpcClient paymentGrpcClient;
 
     private final MemberMapper memberMapper;
     private final SubscriptionMapper subscriptionMapper;
@@ -83,10 +94,12 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         responseObserver.onError(status.asRuntimeException());
     }
 
+    @RequireRole("CUSTOMER")
     @Override
     public void getMember(GetMemberRequest request, StreamObserver<MemberResponse> responseObserver) {
         try {
             MemberDto dto = memberService.getMember(request.getMemberId());
+            requireSelf(dto);
             responseObserver.onNext(memberMapper.toResponse(dto));
             responseObserver.onCompleted();
         } catch (Exception e) {
@@ -94,9 +107,12 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("CUSTOMER")
     @Override
     public void updateProfile(UpdateProfileRequest request, StreamObserver<MemberResponse> responseObserver) {
         try {
+            MemberDto current = memberService.getMember(request.getMemberId());
+            requireSelf(current);
             LocalDate dateOfBirth = (request.getDateOfBirth() != null && !request.getDateOfBirth().isBlank())
                     ? LocalDate.parse(request.getDateOfBirth())
                     : null;
@@ -114,9 +130,13 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     @Override
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         try {
+            if (!request.getGymId().isBlank()) {
+                requireGym(request.getGymId());
+            }
             NormalPage<MemberDto> page = memberService.listMembers(request.getGymId(), request.getPage(), request.getLimit());
             List<MemberResponse> responses = page.items().stream().map(memberMapper::toResponse).toList();
             ListMembersResponse response = ListMembersResponse.newBuilder()
@@ -130,9 +150,13 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole({"CUSTOMER", "ADMIN", "SUPER_ADMIN"})
     @Override
     public void getPlans(GetPlansRequest request, StreamObserver<PlansResponse> responseObserver) {
         try {
+            if (!request.getGymId().isBlank()) {
+                requireGym(request.getGymId());
+            }
             List<PlanDto> plans = gymLocationService.getPlans(request.getGymId());
             List<Plan> planProtos = plans.stream().map(gymLocationMapper::toPlanProto).toList();
 
@@ -143,25 +167,35 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("CUSTOMER")
     @Override
     public void purchaseMembership(PurchaseMembershipRequest request, StreamObserver<PurchaseResponse> responseObserver) {
         try {
-            String paymentId = java.util.UUID.randomUUID().toString();
-            String paymentUrl = "https://payment.gym.com/checkout/" + paymentId;
-            PurchaseResponse response = PurchaseResponse.newBuilder()
-                    .setPaymentId(paymentId)
-                    .setPaymentUrl(paymentUrl)
-                    .build();
-            responseObserver.onNext(response);
+            MemberDto member = memberService.getMemberByUserId(GrpcSecurityContext.getUserId());
+            requireSelf(member);
+            requireGym(member.gymId().toString());
+            InitiatePaymentResponse payment = paymentGrpcClient.initiatePayment(InitiatePaymentRequest.newBuilder()
+                    .setGymId(member.gymId().toString())
+                    .setPaymentType("MEMBERSHIP")
+                    .setReferenceId(request.getPlanId())
+                    .setProvider(request.getProvider())
+                    .setDiscountCode(request.getDiscountCode())
+                    .build());
+            responseObserver.onNext(PurchaseResponse.newBuilder()
+                    .setPaymentId(payment.getPaymentId())
+                    .setPaymentUrl(payment.getPaymentUrl())
+                    .build());
             responseObserver.onCompleted();
         } catch (Exception e) {
             handleError(responseObserver, e);
         }
     }
 
+    @RequireRole("CUSTOMER")
     @Override
     public void pauseMembership(PauseMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
         try {
+            requireSelf(memberService.getMember(request.getMemberId()));
             SubscriptionDto dto = subscriptionService.pauseSubscription(request.getMemberId());
             responseObserver.onNext(subscriptionMapper.toResponse(dto));
             responseObserver.onCompleted();
@@ -170,9 +204,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("CUSTOMER")
     @Override
     public void resumeMembership(ResumeMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
         try {
+            requireSelf(memberService.getMember(request.getMemberId()));
             SubscriptionDto dto = subscriptionService.resumeSubscription(request.getMemberId());
             responseObserver.onNext(subscriptionMapper.toResponse(dto));
             responseObserver.onCompleted();
@@ -181,9 +217,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("CUSTOMER")
     @Override
     public void getMembershipStatus(GetMembershipStatusRequest request, StreamObserver<MembershipResponse> responseObserver) {
         try {
+            requireSelf(memberService.getMember(request.getMemberId()));
             SubscriptionDto dto = subscriptionService.getActiveSubscription(request.getMemberId());
             responseObserver.onNext(subscriptionMapper.toResponse(dto));
             responseObserver.onCompleted();
@@ -192,6 +230,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("SUPER_ADMIN")
     @Override
     public void createGymLocation(CreateGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         try {
@@ -208,9 +247,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     @Override
     public void updateGymLocation(UpdateGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         try {
+            requireGym(gymLocationService.getGymLocation(request.getId()).id().toString());
             GymLocationDto dto = gymLocationService.updateGymLocation(
                     request.getId(),
                     request.getName(),
@@ -225,6 +266,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     @Override
     public void listGymLocations(ListGymLocationsRequest request, StreamObserver<GymLocationsResponse> responseObserver) {
         try {
@@ -237,9 +279,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     @Override
     public void getGymLocation(GetGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         try {
+            requireGym(request.getId());
             GymLocationDto dto = gymLocationService.getGymLocation(request.getId());
             responseObserver.onNext(gymLocationMapper.toResponse(dto));
             responseObserver.onCompleted();
@@ -248,9 +292,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("CHECKIN_SERVICE")
     @Override
     public void validateMembership(ValidateMembershipRequest request, StreamObserver<ValidateMembershipResponse> responseObserver) {
         try {
+            requireServiceGym(request.getGymId());
             MemberDto member = memberService.getMember(request.getMemberId());
             boolean valid = member.status() == MembershipStatus.ACTIVE && member.gymId().toString().equals(request.getGymId());
             ValidateMembershipResponse response = ValidateMembershipResponse.newBuilder()
@@ -264,9 +310,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("CHECKIN_SERVICE")
     @Override
     public void getGymDailySecret(GetGymDailySecretRequest request, StreamObserver<GymDailySecretResponse> responseObserver) {
         try {
+            requireServiceGym(request.getGymId());
             GymDailySecretDto dto = gymQRService.getGymDailySecret(request.getGymId());
             responseObserver.onNext(gymQRSecretMapper.toResponse(dto));
             responseObserver.onCompleted();
@@ -275,9 +323,11 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         }
     }
 
+    @RequireRole("NOTIFICATION_SERVICE")
     @Override
     public void listMembersByStatus(ListMembersByStatusRequest request, StreamObserver<ListMembersByStatusResponse> responseObserver) {
         try {
+            requireGymIds(request.getGymIdsList());
             MembershipStatus status = MembershipStatus.valueOf(request.getStatus());
             List<MemberDto> dtos = memberService.listMembersByStatus(status, request.getGymIdsList());
             List<MemberResponse> responses = dtos.stream().map(memberMapper::toResponse).toList();

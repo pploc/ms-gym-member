@@ -1,48 +1,50 @@
 package com.gym.member.application.scheduler;
 
+import com.google.protobuf.Message;
+import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.member.adapter.out.persistence.entity.OutboxEventEntity;
-import com.gym.member.adapter.out.persistence.repository.OutboxEventJpaRepository;
+import com.gym.member.application.service.OutboxPayloadParser;
+import com.gym.member.application.service.OutboxRelayService;
+import com.gym.member.config.MemberProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-import com.gym.member.adapter.out.persistence.specification.OutboxEventSpecifications;
-import org.springframework.data.domain.Sort;
+import java.util.Map;
 
 @Slf4j
 @Component
-@EnableScheduling
 @RequiredArgsConstructor
 public class OutboxPublisherScheduler {
 
-    private final OutboxEventJpaRepository outboxRepository;
+    private final OutboxRelayService outboxRelayService;
+    private final EventPublisher eventPublisher;
+    private final OutboxPayloadParser payloadParser;
+    private final MemberProperties properties;
 
-    @Scheduled(fixedDelay = 2000)
-    @Transactional
+    @Scheduled(fixedDelayString = "${app.member.outbox.poll-delay:PT2S}")
     public void processOutboxEvents() {
-        List<OutboxEventEntity> pending = outboxRepository.findAll(
-                OutboxEventSpecifications.isPending(),
-                Sort.by(Sort.Direction.ASC, "createdAt")
+        List<OutboxEventEntity> pending = outboxRelayService.claimBatch(
+                properties.outbox().batchSize(),
+                properties.outbox().leaseDuration()
         );
-        if (pending.isEmpty()) {
-            return;
-        }
-
         for (OutboxEventEntity event : pending) {
-            try {
-                event.setStatus("PUBLISHED");
-                outboxRepository.save(event);
-                log.info("Processed outbox event id: {}, topic: {}", event.getId(), event.getTopic());
-            } catch (Exception e) {
-                log.error("Failed to process outbox event id: {}", event.getId(), e);
-                event.setStatus("FAILED");
-                outboxRepository.save(event);
-            }
+            publish(event);
+        }
+    }
+
+    protected void publish(OutboxEventEntity event) {
+        try {
+            Message payload = payloadParser.parse(event.getEventType(), event.getPayload());
+            String key = event.getKafkaKey() != null && !event.getKafkaKey().isBlank()
+                    ? event.getKafkaKey()
+                    : event.getAggregateId();
+            eventPublisher.publish(event.getTopic(), key, payload, event.getId().toString(), Map.of());
+            outboxRelayService.markPublished(event.getId());
+        } catch (Exception e) {
+            outboxRelayService.markFailedOrRetry(event.getId(), e);
         }
     }
 }

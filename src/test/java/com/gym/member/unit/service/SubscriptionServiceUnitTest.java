@@ -1,13 +1,14 @@
 package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
-import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.application.service.MembershipEventFactory;
+import com.gym.member.application.service.OutboxEventWriter;
 import com.gym.member.application.service.SubscriptionService;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.domain.dto.SubscriptionDto;
@@ -26,9 +27,11 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,7 +52,10 @@ class SubscriptionServiceUnitTest {
     private MembershipPlanJpaRepository planRepository;
 
     @Mock
-    private EventPublisher eventPublisher;
+    private OutboxEventWriter outboxEventWriter;
+
+    @Spy
+    private MembershipEventFactory eventFactory = new MembershipEventFactory();
 
     @Mock
     private MemberProperties memberProperties;
@@ -57,12 +63,16 @@ class SubscriptionServiceUnitTest {
     @Spy
     private SubscriptionMapper subscriptionMapper = Mappers.getMapper(SubscriptionMapper.class);
 
+    @Spy
+    private Clock clock = Clock.systemUTC();
+
     @InjectMocks
     private SubscriptionService subscriptionService;
 
     private String memberId;
     private String userId;
     private String planId;
+    private String gymId;
     private MemberEntity member;
     private MembershipPlanEntity plan;
     private SubscriptionEntity activeSub;
@@ -72,15 +82,18 @@ class SubscriptionServiceUnitTest {
         memberId = UUID.randomUUID().toString();
         userId = UUID.randomUUID().toString();
         planId = UUID.randomUUID().toString();
+        gymId = UUID.randomUUID().toString();
 
         member = new MemberEntity();
         member.setId(memberId);
         member.setUserId(userId);
         member.setStatus(MembershipStatus.NONE);
-        member.setGymId(UUID.randomUUID().toString());
+        member.setGymId(gymId);
 
         plan = new MembershipPlanEntity();
         plan.setId(planId);
+        plan.setGymId(gymId);
+        plan.setActive(true);
         plan.setPlanType(PlanType.MONTHLY);
         plan.setDurationDays(30);
 
@@ -89,8 +102,8 @@ class SubscriptionServiceUnitTest {
         activeSub.setMemberId(memberId);
         activeSub.setPlanId(planId);
         activeSub.setStatus(MembershipStatus.ACTIVE);
-        activeSub.setStartDate(LocalDate.now());
-        activeSub.setEndDate(LocalDate.now().plusDays(30));
+        activeSub.setStartDate(LocalDate.now(clock));
+        activeSub.setEndDate(LocalDate.now(clock).plusDays(30));
         activeSub.setPauseCount(0);
     }
 
@@ -101,7 +114,7 @@ class SubscriptionServiceUnitTest {
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), any())).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any())).thenAnswer(inv -> {
             SubscriptionEntity entity = inv.getArgument(0);
             entity.setId(UUID.randomUUID().toString());
@@ -114,7 +127,7 @@ class SubscriptionServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
-        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.activated"), any());
     }
 
     @Test
@@ -124,7 +137,7 @@ class SubscriptionServiceUnitTest {
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), any())).thenReturn(Optional.of(activeSub));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -133,7 +146,7 @@ class SubscriptionServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
-        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.activated"), any());
     }
 
     @Test
@@ -144,7 +157,7 @@ class SubscriptionServiceUnitTest {
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), any())).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -191,7 +204,7 @@ class SubscriptionServiceUnitTest {
         assertNotNull(result);
         assertEquals(MembershipStatus.PAUSED, result.status());
         assertEquals(1, result.pauseCount());
-        verify(eventPublisher, times(1)).publish(eq("membership.paused"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.paused"), any());
     }
 
     @Test
@@ -269,7 +282,7 @@ class SubscriptionServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
-        verify(eventPublisher, times(1)).publish(eq("membership.resumed"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.resumed"), any());
     }
 
     @Test
@@ -318,14 +331,14 @@ class SubscriptionServiceUnitTest {
     void givenExpiredActiveSubscriptions_whenProcessExpiredSubscriptions_thenUpdatesStatusToExpiredAndPublishesEvent() {
         // Given
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRepository.findAllById(Set.of(memberId))).thenReturn(List.of(member));
 
         // When
         subscriptionService.processExpiredSubscriptions();
 
         // Then
         verify(subscriptionRepository, times(1)).save(activeSub);
-        verify(eventPublisher, times(1)).publish(eq("membership.expired"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
     }
 
     @Test
@@ -334,14 +347,14 @@ class SubscriptionServiceUnitTest {
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
+        when(memberRepository.findAllById(Set.of(memberId))).thenReturn(List.of(member));
+        when(planRepository.findAllById(Set.of(planId))).thenReturn(List.of(plan));
 
         // When
         subscriptionService.processExpiringSoonWarnings();
 
         // Then
-        verify(eventPublisher, times(1)).publish(eq("membership.expiring-soon"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expiring-soon"), any());
     }
 
     @Test
@@ -358,6 +371,6 @@ class SubscriptionServiceUnitTest {
         assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
         verify(memberRepository, times(1)).save(member);
         verify(subscriptionRepository, times(1)).save(activeSub);
-        verify(eventPublisher, times(1)).publish(eq("membership.expired"), eq(memberId), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
     }
 }

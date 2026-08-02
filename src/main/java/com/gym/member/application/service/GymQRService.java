@@ -1,6 +1,7 @@
 package com.gym.member.application.service;
 
 import com.gym.common.error.NotFoundException;
+import com.gym.common.grpc.security.GrpcSecurityContext;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.adapter.out.persistence.entity.GymQRSecretEntity;
 import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HexFormat;
@@ -29,9 +31,12 @@ public class GymQRService {
     private final GymQRSecretJpaRepository qrSecretRepository;
     private final GymLocationJpaRepository gymLocationRepository;
     private final GymQRSecretMapper gymQRSecretMapper;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public GymDailySecretDto getGymDailySecret(String gymId) {
+        log.info("Audit: Daily QR secret requested for gymId={} by callerUserId={} callerRole={}",
+                gymId, GrpcSecurityContext.getUserId(), GrpcSecurityContext.getRole());
         GymQRSecretEntity entity = qrSecretRepository.findById(gymId)
                 .orElseThrow(() -> new NotFoundException("Gym QR secret not found for gymId: " + gymId));
         return gymQRSecretMapper.toDto(entity);
@@ -40,6 +45,7 @@ public class GymQRService {
     @Transactional
     public void rotateAllGymDailySecrets() {
         List<GymLocationEntity> activeGyms = gymLocationRepository.findByStatus("ACTIVE");
+        Instant now = Instant.now(clock);
         for (GymLocationEntity gym : activeGyms) {
             String newSecret = UUID.randomUUID().toString().replace("-", "");
             GymQRSecretEntity secretEntity = qrSecretRepository.findById(gym.getId())
@@ -49,7 +55,7 @@ public class GymQRService {
                         return newEntity;
                     });
             secretEntity.setDailySecret(newSecret);
-            secretEntity.setUpdatedAt(Instant.now());
+            secretEntity.setUpdatedAt(now);
             qrSecretRepository.save(secretEntity);
         }
         log.info("Rotated daily QR secrets for {} active gyms", activeGyms.size());

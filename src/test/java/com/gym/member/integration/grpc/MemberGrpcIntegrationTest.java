@@ -1,5 +1,10 @@
 package com.gym.member.integration.grpc;
 
+import com.gym.common.grpc.interceptor.AuthServerInterceptor;
+import com.gym.common.grpc.interceptor.ExceptionInterceptor;
+import com.gym.common.grpc.interceptor.LoggingInterceptor;
+import com.gym.common.grpc.interceptor.MetricsInterceptor;
+import com.gym.common.grpc.interceptor.TracingInterceptor;
 import com.gym.member.adapter.in.grpc.MemberGrpcHandler;
 import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.adapter.out.persistence.entity.MemberEntity;
@@ -8,11 +13,14 @@ import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.domain.model.MembershipStatus;
 import com.gym.proto.member.v1.*;
 import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
 import io.grpc.Server;
+import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.stub.MetadataUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +30,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +45,21 @@ class MemberGrpcIntegrationTest {
     private MemberGrpcHandler memberGrpcHandler;
 
     @Autowired
+    private AuthServerInterceptor authServerInterceptor;
+
+    @Autowired
+    private ExceptionInterceptor exceptionInterceptor;
+
+    @Autowired
+    private LoggingInterceptor loggingInterceptor;
+
+    @Autowired
+    private TracingInterceptor tracingInterceptor;
+
+    @Autowired
+    private MetricsInterceptor metricsInterceptor;
+
+    @Autowired
     private MemberJpaRepository memberRepository;
 
     @Autowired
@@ -46,12 +70,14 @@ class MemberGrpcIntegrationTest {
     private MemberServiceGrpc.MemberServiceBlockingStub blockingStub;
 
     private String memberId;
+    private String userId;
     private String gymId;
 
     @BeforeEach
     void setUp() throws Exception {
         gymId = UUID.randomUUID().toString();
         memberId = UUID.randomUUID().toString();
+        userId = UUID.randomUUID().toString();
 
         GymLocationEntity location = new GymLocationEntity();
         location.setId(gymId);
@@ -64,7 +90,7 @@ class MemberGrpcIntegrationTest {
 
         MemberEntity member = new MemberEntity();
         member.setId(memberId);
-        member.setUserId(UUID.randomUUID().toString());
+        member.setUserId(userId);
         member.setGymId(gymId);
         member.setFullName("John Real DB");
         member.setPhone("12345678");
@@ -77,7 +103,10 @@ class MemberGrpcIntegrationTest {
 
         inProcessServer = InProcessServerBuilder.forName(serverName)
                 .directExecutor()
-                .addService(memberGrpcHandler)
+                .addService(ServerInterceptors.intercept(
+                        memberGrpcHandler,
+                        List.of(tracingInterceptor, loggingInterceptor, metricsInterceptor, exceptionInterceptor, authServerInterceptor)
+                ))
                 .build()
                 .start();
 
@@ -94,13 +123,22 @@ class MemberGrpcIntegrationTest {
         if (inProcessServer != null) inProcessServer.shutdownNow();
     }
 
+    private MemberServiceGrpc.MemberServiceBlockingStub getStubWithHeaders(String uId, String role, String gId) {
+        Metadata headers = new Metadata();
+        if (uId != null) headers.put(Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER), uId);
+        if (role != null) headers.put(Metadata.Key.of("x-user-role", Metadata.ASCII_STRING_MARSHALLER), role);
+        if (gId != null) headers.put(Metadata.Key.of("x-gym-id", Metadata.ASCII_STRING_MARSHALLER), gId);
+        return blockingStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+    }
+
     @Test
     void givenExistingMember_whenGetMember_thenReturnsMemberResponse() {
         // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
+        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
         // When
-        MemberResponse response = blockingStub.getMember(request);
+        MemberResponse response = stub.getMember(request);
 
         // Then
         assertThat(response).isNotNull();
@@ -114,11 +152,12 @@ class MemberGrpcIntegrationTest {
         // Given
         String nonExistentId = UUID.randomUUID().toString();
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(nonExistentId).build();
+        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
         // When
         StatusRuntimeException exception = assertThrows(
                 StatusRuntimeException.class,
-                () -> blockingStub.getMember(request)
+                () -> stub.getMember(request)
         );
 
         // Then
@@ -133,9 +172,10 @@ class MemberGrpcIntegrationTest {
                 .setFullName("Jane Real DB")
                 .setPhone("87654321")
                 .build();
+        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
         // When
-        MemberResponse response = blockingStub.updateProfile(request);
+        MemberResponse response = stub.updateProfile(request);
 
         // Then
         assertThat(response).isNotNull();
@@ -155,9 +195,10 @@ class MemberGrpcIntegrationTest {
                 .setPage(0)
                 .setLimit(10)
                 .build();
+        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", gymId);
 
         // When
-        ListMembersResponse response = blockingStub.listMembers(request);
+        ListMembersResponse response = stub.listMembers(request);
 
         // Then
         assertThat(response).isNotNull();

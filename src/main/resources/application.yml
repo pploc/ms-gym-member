@@ -8,7 +8,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -42,6 +42,7 @@ logging:
 
 app:
   member:
+    require-event-id: ${MEMBER_REQUIRE_EVENT_ID:false}
     cron:
       qr-rotation: "${CRON_QR_ROTATION:0 0 0 * * *}"
       expiry-check: "${CRON_EXPIRY_CHECK:0 0 6 * * *}"
@@ -50,6 +51,15 @@ app:
       max-pause-count: ${SUBSCRIPTION_MAX_PAUSE_COUNT:2}
       warning-notice-days: ${SUBSCRIPTION_WARNING_NOTICE_DAYS:7}
       default-duration-days: ${SUBSCRIPTION_DEFAULT_DURATION_DAYS:30}
+    outbox:
+      batch-size: ${OUTBOX_BATCH_SIZE:50}
+      poll-delay: ${OUTBOX_POLL_DELAY:PT2S}
+      retry-delay: ${OUTBOX_RETRY_DELAY:PT10S}
+      max-attempts: ${OUTBOX_MAX_ATTEMPTS:10}
+      lease-duration: ${OUTBOX_LEASE_DURATION:PT1M}
+    payment:
+      target: ${PAYMENT_GRPC_TARGET:}
+      deadline: ${PAYMENT_GRPC_DEADLINE:PT3S}
 
 gym:
   kafka:

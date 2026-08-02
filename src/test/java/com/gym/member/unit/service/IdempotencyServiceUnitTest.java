@@ -8,10 +8,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Clock;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -19,6 +23,9 @@ class IdempotencyServiceUnitTest {
 
     @Mock
     private ProcessedEventJpaRepository repository;
+
+    @Spy
+    private Clock clock = Clock.systemUTC();
 
     @InjectMocks
     private IdempotencyService idempotencyService;
@@ -52,6 +59,30 @@ class IdempotencyServiceUnitTest {
 
         // Then
         assertFalse(result);
+    }
+
+    @Test
+    void givenNewEvent_whenClaimEvent_thenReturnsTrue() {
+        // Given
+        when(repository.insertIfNotExists(eq(eventId), eq("user.registered"), any())).thenReturn(1);
+
+        // When
+        boolean claimed = idempotencyService.claimEvent(eventId, "user.registered");
+
+        // Then
+        assertTrue(claimed);
+    }
+
+    @Test
+    void givenDuplicateEvent_whenClaimEvent_thenReturnsFalse() {
+        // Given
+        when(repository.insertIfNotExists(eq(eventId), eq("user.registered"), any())).thenReturn(0);
+
+        // When
+        boolean claimed = idempotencyService.claimEvent(eventId, "user.registered");
+
+        // Then
+        assertFalse(claimed);
     }
 
     @Test

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 
 @Slf4j
@@ -15,6 +16,7 @@ import java.time.Instant;
 public class IdempotencyService {
 
     private final ProcessedEventJpaRepository processedEventRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public boolean isEventProcessed(String eventId) {
@@ -22,7 +24,13 @@ public class IdempotencyService {
     }
 
     @Transactional
+    public boolean claimEvent(String eventId, String eventType) {
+        int inserted = processedEventRepository.insertIfNotExists(eventId, eventType, Instant.now(clock));
+        return inserted > 0;
+    }
+
+    @Transactional
     public void markEventProcessed(String eventId, String eventType) {
-        processedEventRepository.save(new ProcessedEventEntity(eventId, eventType, Instant.now()));
+        processedEventRepository.save(new ProcessedEventEntity(eventId, eventType, Instant.now(clock)));
     }
 }

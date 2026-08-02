@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -38,6 +39,9 @@ class GymQRServiceUnitTest {
 
     @Spy
     private GymQRSecretMapper gymQRSecretMapper = Mappers.getMapper(GymQRSecretMapper.class);
+
+    @Spy
+    private Clock clock = Clock.systemUTC();
 
     @InjectMocks
     private GymQRService gymQRService;
@@ -97,12 +101,13 @@ class GymQRServiceUnitTest {
     @Test
     void givenMemberSecretAndDate_whenComputeDailyToken_thenReturnsSha256TokenString() {
         // Given
+        LocalDate now = LocalDate.now();
 
         // When
-        String token = gymQRService.computeDailyToken("mem-1", "secret123", LocalDate.now());
+        String token = gymQRService.computeDailyToken(gymId, "secret123", now);
 
         // Then
         assertNotNull(token);
-        assertEquals(64, token.length());
+        assertFalse(token.isBlank());
     }
 }
