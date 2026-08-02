@@ -1,8 +1,8 @@
 package com.gym.member.unit.kafka;
 
 import com.gym.common.kafka.message.EventEnvelope;
-import com.gym.member.adapter.in.kafka.EventConsumerAdapter;
-import com.gym.member.application.service.MemberEventProcessingService;
+import com.gym.member.payment.adapter.in.kafka.EventConsumerAdapter;
+import com.gym.member.member.application.service.MemberEventProcessingService;
 import com.gym.member.config.MemberProperties;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
@@ -18,7 +18,6 @@ import org.springframework.kafka.support.Acknowledgment;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 

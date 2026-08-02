@@ -2,7 +2,7 @@ package com.gym.member.adapter.in.grpc;
 
 import com.gym.common.error.ForbiddenException;
 import com.gym.common.grpc.security.GrpcSecurityContext;
-import com.gym.member.domain.dto.MemberDto;
+import com.gym.member.member.domain.dto.MemberDto;
 
 import java.util.Collection;
 import java.util.Objects;

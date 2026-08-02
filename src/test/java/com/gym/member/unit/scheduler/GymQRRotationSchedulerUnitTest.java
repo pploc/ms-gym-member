@@ -1,7 +1,7 @@
 package com.gym.member.unit.scheduler;
 
-import com.gym.member.application.scheduler.GymQRRotationScheduler;
-import com.gym.member.application.service.GymQRService;
+import com.gym.member.location.application.scheduler.GymQRRotationScheduler;
+import com.gym.member.location.application.service.GymQRService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

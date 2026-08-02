@@ -5,7 +5,7 @@ import com.gym.common.grpc.interceptor.ExceptionInterceptor;
 import com.gym.common.grpc.interceptor.LoggingInterceptor;
 import com.gym.common.grpc.interceptor.MetricsInterceptor;
 import com.gym.common.grpc.interceptor.TracingInterceptor;
-import com.gym.member.adapter.in.grpc.MemberGrpcHandler;
+import com.gym.member.member.adapter.in.grpc.MemberGrpcHandler;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;

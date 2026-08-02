@@ -1,12 +1,13 @@
 package com.gym.member.unit.scheduler;
 
+
 import com.google.protobuf.Message;
 
 import com.gym.common.kafka.producer.EventPublisher;
-import com.gym.member.adapter.out.persistence.entity.OutboxEventEntity;
-import com.gym.member.application.scheduler.OutboxPublisherScheduler;
-import com.gym.member.application.service.OutboxPayloadParser;
-import com.gym.member.application.service.OutboxRelayService;
+import com.gym.member.shared.outbox.entity.OutboxEventEntity;
+import com.gym.member.shared.outbox.scheduler.OutboxPublisherScheduler;
+import com.gym.member.shared.outbox.service.OutboxPayloadParser;
+import com.gym.member.shared.outbox.service.OutboxRelayService;
 import com.gym.member.config.MemberProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

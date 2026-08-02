@@ -1,9 +1,10 @@
 package com.gym.member.integration.outbox;
 
+
 import com.google.protobuf.util.JsonFormat;
-import com.gym.member.adapter.out.persistence.entity.OutboxEventEntity;
-import com.gym.member.adapter.out.persistence.repository.OutboxEventJpaRepository;
-import com.gym.member.application.scheduler.OutboxPublisherScheduler;
+import com.gym.member.shared.outbox.entity.OutboxEventEntity;
+import com.gym.member.shared.outbox.repository.OutboxEventJpaRepository;
+import com.gym.member.shared.outbox.scheduler.OutboxPublisherScheduler;
 import com.gym.proto.events.v1.MembershipActivatedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

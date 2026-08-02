@@ -1,8 +1,8 @@
 package com.gym.member.unit.service;
 
-import com.gym.member.adapter.out.persistence.entity.ProcessedEventEntity;
-import com.gym.member.adapter.out.persistence.repository.ProcessedEventJpaRepository;
-import com.gym.member.application.service.IdempotencyService;
+import com.gym.member.shared.idempotency.entity.ProcessedEventEntity;
+import com.gym.member.shared.idempotency.repository.ProcessedEventJpaRepository;
+import com.gym.member.shared.idempotency.service.IdempotencyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

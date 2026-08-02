@@ -1,7 +1,7 @@
 package com.gym.member.unit.scheduler;
 
-import com.gym.member.application.scheduler.SubscriptionExpiryWarningScheduler;
-import com.gym.member.application.service.SubscriptionExpiryService;
+import com.gym.member.member.application.scheduler.SubscriptionExpiryWarningScheduler;
+import com.gym.member.member.application.service.SubscriptionExpiryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

@@ -1,14 +1,14 @@
 package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
-import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
-import com.gym.member.adapter.out.persistence.entity.GymQRSecretEntity;
-import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
-import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
-import com.gym.member.application.service.GymQRService;
-import com.gym.member.domain.dto.GymDailySecretDto;
-import com.gym.member.domain.model.GymLocationStatus;
-import com.gym.member.mapper.GymQRSecretMapper;
+import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.location.adapter.out.persistence.entity.GymQRSecretEntity;
+import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
+import com.gym.member.location.adapter.out.persistence.repository.GymQRSecretJpaRepository;
+import com.gym.member.location.application.service.GymQRService;
+import com.gym.member.location.domain.dto.GymDailySecretDto;
+import com.gym.member.location.domain.model.GymLocationStatus;
+import com.gym.member.location.adapter.out.persistence.mapper.GymQRSecretMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

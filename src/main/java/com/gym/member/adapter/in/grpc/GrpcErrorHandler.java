@@ -14,6 +14,16 @@ public final class GrpcErrorHandler {
 
     private GrpcErrorHandler() {}
 
+    public static <T> void execute(StreamObserver<T> responseObserver, java.util.function.Supplier<T> action) {
+        try {
+            T response = action.get();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (Exception e) {
+            handleError(responseObserver, e);
+        }
+    }
+
     public static void handleError(StreamObserver<?> responseObserver, Exception e) {
         String traceId = MDC.get("traceId");
         if (traceId == null || traceId.isBlank()) {

@@ -77,12 +77,12 @@ dependencies {
 def jacocoExcludes = [
         'com/gym/member/MsGymMemberApplication.class',
         'com/gym/member/config/**',
-        'com/gym/member/mapper/**',
-        'com/gym/member/domain/dto/**',
-        'com/gym/member/domain/event/**',
-        'com/gym/member/domain/model/**',
-        'com/gym/member/domain/exception/**',
-        'com/gym/member/adapter/out/persistence/entity/**',
+        'com/gym/member/**/mapper/**',
+        'com/gym/member/**/dto/**',
+        'com/gym/member/**/event/**',
+        'com/gym/member/**/model/**',
+        'com/gym/member/**/exception/**',
+        'com/gym/member/**/entity/**',
         'com/gym/member/util/**'
 ]
 

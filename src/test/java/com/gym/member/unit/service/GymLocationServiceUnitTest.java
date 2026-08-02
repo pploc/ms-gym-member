@@ -1,16 +1,16 @@
 package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
-import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
-import com.gym.member.domain.model.GymLocationStatus;
-import com.gym.member.adapter.out.persistence.entity.MembershipPlanEntity;
-import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
-import com.gym.member.adapter.out.persistence.repository.GymQRSecretJpaRepository;
-import com.gym.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
-import com.gym.member.application.service.GymLocationService;
-import com.gym.member.domain.dto.GymLocationDto;
-import com.gym.member.domain.dto.PlanDto;
-import com.gym.member.mapper.GymLocationMapper;
+import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.location.domain.model.GymLocationStatus;
+import com.gym.member.member.adapter.out.persistence.entity.MembershipPlanEntity;
+import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
+import com.gym.member.location.adapter.out.persistence.repository.GymQRSecretJpaRepository;
+import com.gym.member.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
+import com.gym.member.location.application.service.GymLocationService;
+import com.gym.member.location.domain.dto.GymLocationDto;
+import com.gym.member.member.domain.dto.PlanDto;
+import com.gym.member.location.adapter.out.persistence.mapper.GymLocationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +42,9 @@ class GymLocationServiceUnitTest {
 
     @Spy
     private GymLocationMapper gymLocationMapper = Mappers.getMapper(GymLocationMapper.class);
+
+    @Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
 
     @InjectMocks
     private GymLocationService gymLocationService;

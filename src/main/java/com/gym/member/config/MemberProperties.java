@@ -34,6 +34,7 @@ public record MemberProperties(
 
     public record PaymentProperties(
             String target,
-            Duration deadline
+            Duration deadline,
+            boolean usePlaintext
     ) {}
 }

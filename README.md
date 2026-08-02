@@ -36,25 +36,25 @@
 
 ## 🏗 Project Architecture
 
-Hexagonal / Clean Architecture:
+Domain-Driven Design (DDD) with Hexagonal / Clean Architecture:
 
 ```
 src/main/java/com/gym/member/
-├── domain/
-│   ├── model/         # Domain enums & models (MembershipStatus, PlanType)
-│   ├── dto/           # Java 26 Records (MemberDto, SubscriptionDto, GymLocationDto)
-│   ├── event/         # Domain event records
-│   └── exception/     # Custom domain exceptions
-├── application/
-│   ├── service/       # Domain application services (MemberService, SubscriptionService, etc.)
-│   └── scheduler/     # Scheduled jobs (0 0 * * * QR rotation, 6 AM & 9 AM expiry jobs)
-├── adapter/
-│   ├── in/
-│   │   ├── grpc/      # MemberGrpcHandler (gRPC service on port 50051)
-│   │   └── kafka/     # EventConsumerAdapter (identity & payment event listeners)
-│   └── out/
-│       └── persistence/# JPA Entities & Repositories
-└── config/            # Spring & gRPC configuration
+├── member/                    # Bounded Context: Member & Subscription Domain
+│   ├── domain/                # Aggregates, Enums, DTOs, Events, Exceptions
+│   ├── application/           # Member & Subscription Use Cases, Services, Schedulers
+│   └── adapter/               # gRPC Inbound Delegates/Handlers, Persistence Entities & Repositories
+├── location/                  # Bounded Context: Gym Location & Door QR Secret Domain
+│   ├── domain/                # Gym Location Models & DTOs
+│   ├── application/           # GymLocation & Daily Door QR Services & Rotation Schedulers
+│   └── adapter/               # Gym Location gRPC Handlers, Persistence Entities & Repositories
+├── payment/                   # Bounded Context: Payment Integration & Event Listener
+│   └── adapter/               # Payment gRPC Client & Kafka Event Consumer Adapters
+├── shared/                    # Shared Infrastructure Context
+│   ├── outbox/                # Transactional Outbox Pattern (Entities, Repositories, Relay Service, Schedulers)
+│   ├── idempotency/           # Consumer Idempotency Tracking
+│   └── mapper/                # Common Mapping Utilities
+└── config/                    # Spring Boot, Security, and gRPC Configuration
 ```
 
 ---

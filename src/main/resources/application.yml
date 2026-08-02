@@ -60,6 +60,7 @@ app:
     payment:
       target: ${PAYMENT_GRPC_TARGET:}
       deadline: ${PAYMENT_GRPC_DEADLINE:PT3S}
+      use-plaintext: ${PAYMENT_GRPC_USE_PLAINTEXT:true}
 
 gym:
   kafka:

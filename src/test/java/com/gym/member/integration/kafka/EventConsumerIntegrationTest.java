@@ -1,13 +1,13 @@
 package com.gym.member.integration.kafka;
 
 import com.gym.common.kafka.message.EventEnvelope;
-import com.gym.member.adapter.in.kafka.EventConsumerAdapter;
-import com.gym.member.adapter.out.persistence.entity.GymLocationEntity;
-import com.gym.member.domain.model.GymLocationStatus;
-import com.gym.member.adapter.out.persistence.entity.MemberEntity;
-import com.gym.member.adapter.out.persistence.repository.GymLocationJpaRepository;
-import com.gym.member.adapter.out.persistence.repository.MemberJpaRepository;
-import com.gym.member.adapter.out.persistence.repository.ProcessedEventJpaRepository;
+import com.gym.member.payment.adapter.in.kafka.EventConsumerAdapter;
+import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
+import com.gym.member.location.domain.model.GymLocationStatus;
+import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
+import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
+import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
+import com.gym.member.shared.idempotency.repository.ProcessedEventJpaRepository;
 import com.gym.proto.events.v1.UserRegisteredEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

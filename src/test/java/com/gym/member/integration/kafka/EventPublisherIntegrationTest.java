@@ -1,5 +1,6 @@
 package com.gym.member.integration.kafka;
 
+
 import com.gym.common.kafka.message.EventEnvelope;
 import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.proto.events.v1.MembershipActivatedEvent;
