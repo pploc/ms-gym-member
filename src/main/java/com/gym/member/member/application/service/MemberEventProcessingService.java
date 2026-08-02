@@ -4,8 +4,6 @@ import com.gym.member.shared.idempotency.service.IdempotencyService;
 
 import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.application.port.in.MemberSuspensionUseCase;
-import com.gym.member.member.application.port.in.SubscriptionActivationUseCase;
-import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.application.service.strategy.PaymentTypeHandler;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
