@@ -84,7 +84,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
         Status status;
         if (e instanceof NotFoundException) {
             status = Status.NOT_FOUND.withDescription(e.getMessage());
-        } else if (e instanceof IllegalArgumentException) {
+        } else if (e instanceof IllegalArgumentException || e instanceof java.time.DateTimeException) {
             status = Status.INVALID_ARGUMENT.withDescription(e.getMessage());
         } else if (e instanceof DomainException) {
             status = Status.FAILED_PRECONDITION.withDescription(e.getMessage());

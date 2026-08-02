@@ -521,4 +521,22 @@ class MemberGrpcHandlerUnitTest {
 
         verify(responseObserver, times(1)).onError(any());
     }
+
+    @Test
+    void givenMalformedDateOfBirth_whenUpdateProfile_thenCallsOnErrorWithInvalidArgumentStatus() {
+        UpdateProfileRequest request = UpdateProfileRequest.newBuilder()
+                .setMemberId(memberId.toString())
+                .setDateOfBirth("invalid-date-format")
+                .build();
+        when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
+
+        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
+            memberGrpcHandler.updateProfile(request, responseObserver);
+        });
+
+        verify(responseObserver, times(1)).onError(argThat(throwable ->
+                throwable instanceof io.grpc.StatusRuntimeException &&
+                        ((io.grpc.StatusRuntimeException) throwable).getStatus().getCode() == io.grpc.Status.Code.INVALID_ARGUMENT
+        ));
+    }
 }
