@@ -10,26 +10,36 @@ permissions:
   contents: read
   packages: write
 
-env:
-  READ_PACKAGES_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN }}
-  GPR_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN }}
-  GITHUB_TOKEN: ${{ secrets.READ_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
-
 jobs:
   java-ci:
-    uses: pploc/gym-infra/.github/workflows/reusable-java-ci.yml@develop
-    with:
-      service_path: '.'
-    secrets: inherit
-
-  docker-build:
-    needs: java-ci
-    if: github.event_name == 'push'
+    name: Lint, Unit & Integration Tests
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-    uses: pploc/gym-infra/.github/workflows/reusable-docker-build.yml@develop
-    with:
-      service_name: 'ms-gym-member'
-      context: '.'
-    secrets: inherit
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 26
+        uses: actions/setup-java@v4
+        with:
+          java-version: '26'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Run Spotless Code Formatting Check
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew spotlessCheck --no-daemon
+
+      - name: Run Tests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew test --no-daemon
