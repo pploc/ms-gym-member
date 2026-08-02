@@ -25,15 +25,15 @@ repositories {
     maven {
         url 'https://maven.pkg.github.com/pploc/gym-proto'
         credentials {
-            username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user") ?: "pploc"
-            password = System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
+            username = project.findProperty("gpr.user") ?: System.getenv("GPR_USER") ?: "pploc"
+            password = project.findProperty("gpr.key") ?: System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN")
         }
     }
     maven {
         url 'https://maven.pkg.github.com/pploc/common-java'
         credentials {
-            username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user") ?: "pploc"
-            password = System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
+            username = project.findProperty("gpr.user") ?: System.getenv("GPR_USER") ?: "pploc"
+            password = project.findProperty("gpr.key") ?: System.getenv("READ_PACKAGES_TOKEN") ?: System.getenv("GPR_TOKEN") ?: System.getenv("GITHUB_TOKEN")
         }
     }
 }
