@@ -39,7 +39,6 @@ app:
   member:
     require-event-id: ${MEMBER_REQUIRE_EVENT_ID:false}
     cron:
-      qr-rotation: "${CRON_QR_ROTATION:0 0 0 * * *}"
       expiry-check: "${CRON_EXPIRY_CHECK:0 0 6 * * *}"
       expiry-warning: "${CRON_EXPIRY_WARNING:0 0 9 * * *}"
     subscription:

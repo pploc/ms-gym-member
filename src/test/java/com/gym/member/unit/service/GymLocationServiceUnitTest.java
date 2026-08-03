@@ -5,7 +5,6 @@ import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.location.domain.model.GymLocationStatus;
 import com.gym.member.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
-import com.gym.member.location.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.location.application.service.GymLocationService;
 import com.gym.member.location.domain.dto.GymLocationDto;
@@ -35,16 +34,10 @@ class GymLocationServiceUnitTest {
     private GymLocationJpaRepository gymLocationRepository;
 
     @Mock
-    private GymQRSecretJpaRepository qrSecretRepository;
-
-    @Mock
     private MembershipPlanJpaRepository planRepository;
 
     @Spy
     private GymLocationMapper gymLocationMapper = Mappers.getMapper(GymLocationMapper.class);
-
-    @Spy
-    private java.time.Clock clock = java.time.Clock.systemUTC();
 
     @InjectMocks
     private GymLocationService gymLocationService;
@@ -68,7 +61,7 @@ class GymLocationServiceUnitTest {
     }
 
     @Test
-    void givenValidGymDetails_whenCreateGymLocation_thenCreatesLocationAndGeneratesQRSecret() {
+    void givenValidGymDetails_whenCreateGymLocation_thenPersistsOnlyLocation() {
         // Given
         when(gymLocationRepository.save(any())).thenAnswer(inv -> {
             GymLocationEntity e = inv.getArgument(0);
@@ -82,7 +75,7 @@ class GymLocationServiceUnitTest {
         // Then
         assertNotNull(dto);
         assertEquals("Central Gym", dto.name());
-        verify(qrSecretRepository, times(1)).save(any());
+        verify(gymLocationRepository, times(1)).save(any());
     }
 
     @Test

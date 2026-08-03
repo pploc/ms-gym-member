@@ -81,11 +81,6 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     }
 
     @Override
-    public void getGymDailySecret(GetGymDailySecretRequest request, StreamObserver<GymDailySecretResponse> responseObserver) {
-        gymLocationGrpcDelegate.getGymDailySecret(request, responseObserver);
-    }
-
-    @Override
     public void listMembersByStatus(ListMembersByStatusRequest request, StreamObserver<ListMembersByStatusResponse> responseObserver) {
         memberGrpcDelegate.listMembersByStatus(request, responseObserver);
     }

@@ -9,13 +9,10 @@ import com.gym.common.error.NotFoundException;
 import com.gym.common.grpc.security.GrpcSecurityContext;
 import com.gym.common.grpc.security.UserClaims;
 import com.gym.common.pagination.NormalPage;
-import com.gym.member.adapter.in.grpc.*;
 import com.gym.member.payment.adapter.out.grpc.PaymentGrpcClient;
 import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.location.application.service.GymLocationService;
-import com.gym.member.location.application.service.GymQRService;
 import com.gym.member.member.application.service.MemberService;
-import com.gym.member.location.domain.dto.GymDailySecretDto;
 import com.gym.member.location.domain.dto.GymLocationDto;
 import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.domain.dto.PlanDto;
@@ -24,7 +21,6 @@ import com.gym.member.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.domain.model.PlanType;
 import com.gym.member.location.adapter.out.persistence.mapper.GymLocationMapper;
-import com.gym.member.location.adapter.out.persistence.mapper.GymQRSecretMapper;
 import com.gym.member.member.adapter.out.persistence.mapper.MemberMapper;
 import com.gym.member.member.adapter.out.persistence.mapper.SubscriptionMapper;
 import com.gym.proto.member.v1.*;
@@ -60,9 +56,6 @@ class MemberGrpcHandlerUnitTest {
     private GymLocationService gymLocationService;
 
     @Mock
-    private GymQRService gymQRService;
-
-    @Mock
     private PaymentGrpcClient paymentGrpcClient;
 
     @Mock
@@ -76,9 +69,6 @@ class MemberGrpcHandlerUnitTest {
 
     @Spy
     private GymLocationMapper gymLocationMapper = Mappers.getMapper(GymLocationMapper.class);
-
-    @Spy
-    private GymQRSecretMapper gymQRSecretMapper = Mappers.getMapper(GymQRSecretMapper.class);
 
     private MemberGrpcDelegate memberGrpcDelegate;
     private SubscriptionGrpcDelegate subscriptionGrpcDelegate;
@@ -102,7 +92,7 @@ class MemberGrpcHandlerUnitTest {
 
         memberGrpcDelegate = new MemberGrpcDelegate(memberService, memberMapper);
         subscriptionGrpcDelegate = new SubscriptionGrpcDelegate(memberService, subscriptionLifecycleUseCase, paymentGrpcClient, subscriptionMapper);
-        gymLocationGrpcDelegate = new GymLocationGrpcDelegate(gymLocationService, gymQRService, gymLocationMapper, gymQRSecretMapper);
+        gymLocationGrpcDelegate = new GymLocationGrpcDelegate(gymLocationService, gymLocationMapper);
         memberGrpcHandler = new MemberGrpcHandler(memberGrpcDelegate, subscriptionGrpcDelegate, gymLocationGrpcDelegate);
     }
 
@@ -483,29 +473,17 @@ class MemberGrpcHandlerUnitTest {
     }
 
     @Test
-    void givenGymId_whenGetGymDailySecret_thenReturnsGymDailySecretResponse() {
-        GetGymDailySecretRequest request = GetGymDailySecretRequest.newBuilder().setGymId(gymId.toString()).build();
-        GymDailySecretDto secretDto = new GymDailySecretDto(gymId, "secret-xyz");
-        when(gymQRService.getGymDailySecret(gymId.toString())).thenReturn(secretDto);
+    void givenCheckinService_whenGetGymLocation_thenReturnsGymLocationResponse() {
+        GetGymLocationRequest request = GetGymLocationRequest.newBuilder().setId(gymId.toString()).build();
+        GymLocationDto locDto = new GymLocationDto(gymId, chainId, "Gym B", "Addr", "City", "ACTIVE");
+        when(gymLocationService.getGymLocation(gymId.toString())).thenReturn(locDto);
 
         runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () -> {
-            memberGrpcHandler.getGymDailySecret(request, responseObserver);
+            memberGrpcHandler.getGymLocation(request, responseObserver);
         });
 
-        verify(responseObserver, times(1)).onNext(any(GymDailySecretResponse.class));
+        verify(responseObserver, times(1)).onNext(any(GymLocationResponse.class));
         verify(responseObserver, times(1)).onCompleted();
-    }
-
-    @Test
-    void givenErrorOnGetGymDailySecret_whenGetGymDailySecret_thenCallsOnError() {
-        GetGymDailySecretRequest request = GetGymDailySecretRequest.newBuilder().setGymId(gymId.toString()).build();
-        when(gymQRService.getGymDailySecret(any())).thenThrow(new RuntimeException("Error"));
-
-        runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () -> {
-            memberGrpcHandler.getGymDailySecret(request, responseObserver);
-        });
-
-        verify(responseObserver, times(1)).onError(any());
     }
 
     @Test

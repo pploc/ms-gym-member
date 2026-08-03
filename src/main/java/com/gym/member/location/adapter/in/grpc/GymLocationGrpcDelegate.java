@@ -2,17 +2,12 @@ package com.gym.member.location.adapter.in.grpc;
 
 import com.gym.common.grpc.security.RequireRole;
 import com.gym.member.location.application.port.in.GymLocationUseCase;
-import com.gym.member.location.application.port.in.GymQRUseCase;
-import com.gym.member.location.domain.dto.GymDailySecretDto;
 import com.gym.member.location.domain.dto.GymLocationDto;
 import com.gym.member.member.domain.dto.PlanDto;
 import com.gym.member.location.adapter.out.persistence.mapper.GymLocationMapper;
-import com.gym.member.location.adapter.out.persistence.mapper.GymQRSecretMapper;
 import com.gym.proto.member.v1.CreateGymLocationRequest;
-import com.gym.proto.member.v1.GetGymDailySecretRequest;
 import com.gym.proto.member.v1.GetGymLocationRequest;
 import com.gym.proto.member.v1.GetPlansRequest;
-import com.gym.proto.member.v1.GymDailySecretResponse;
 import com.gym.proto.member.v1.GymLocationResponse;
 import com.gym.proto.member.v1.GymLocationsResponse;
 import com.gym.proto.member.v1.ListGymLocationsRequest;
@@ -26,7 +21,6 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGym;
-import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireServiceGym;
 import static com.gym.member.adapter.in.grpc.GrpcErrorHandler.execute;
 
 @Component
@@ -34,9 +28,7 @@ import static com.gym.member.adapter.in.grpc.GrpcErrorHandler.execute;
 public class GymLocationGrpcDelegate {
 
     private final GymLocationUseCase gymLocationUseCase;
-    private final GymQRUseCase gymQRUseCase;
     private final GymLocationMapper gymLocationMapper;
-    private final GymQRSecretMapper gymQRSecretMapper;
 
     @RequireRole({"CUSTOMER", "ADMIN", "SUPER_ADMIN"})
     public void getPlans(GetPlansRequest request, StreamObserver<PlansResponse> responseObserver) {
@@ -88,21 +80,12 @@ public class GymLocationGrpcDelegate {
         });
     }
 
-    @RequireRole({"ADMIN", "SUPER_ADMIN"})
+    @RequireRole({"ADMIN", "SUPER_ADMIN", "CHECKIN_SERVICE"})
     public void getGymLocation(GetGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireGym(request.getId());
             GymLocationDto dto = gymLocationUseCase.getGymLocation(request.getId());
             return gymLocationMapper.toResponse(dto);
-        });
-    }
-
-    @RequireRole("CHECKIN_SERVICE")
-    public void getGymDailySecret(GetGymDailySecretRequest request, StreamObserver<GymDailySecretResponse> responseObserver) {
-        execute(responseObserver, () -> {
-            requireServiceGym(request.getGymId());
-            GymDailySecretDto dto = gymQRUseCase.getGymDailySecret(request.getGymId());
-            return gymQRSecretMapper.toResponse(dto);
         });
     }
 }

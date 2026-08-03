@@ -2,10 +2,8 @@ package com.gym.member.location.application.service;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
-import com.gym.member.location.adapter.out.persistence.entity.GymQRSecretEntity;
 import com.gym.member.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
-import com.gym.member.location.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.location.domain.dto.GymLocationDto;
 import com.gym.member.member.domain.dto.PlanDto;
@@ -16,20 +14,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class GymLocationService implements GymLocationUseCase {
 
     private final GymLocationJpaRepository gymLocationRepository;
-    private final GymQRSecretJpaRepository qrSecretRepository;
     private final MembershipPlanJpaRepository planRepository;
     private final GymLocationMapper gymLocationMapper;
-    private final Clock clock;
 
     @Transactional
     public GymLocationDto createGymLocation(String chainId, String name, String address, String city) {
@@ -41,14 +34,6 @@ public class GymLocationService implements GymLocationUseCase {
         entity.setStatus(GymLocationStatus.ACTIVE);
 
         GymLocationEntity saved = gymLocationRepository.save(entity);
-
-        // Initialize daily secret
-        GymQRSecretEntity secretEntity = new GymQRSecretEntity();
-        secretEntity.setGymId(saved.getId());
-        secretEntity.setDailySecret(UUID.randomUUID().toString().replace("-", ""));
-        secretEntity.setUpdatedAt(Instant.now(clock));
-        qrSecretRepository.save(secretEntity);
-
         return gymLocationMapper.toDto(saved);
     }
 
