@@ -13,7 +13,6 @@ public record MemberProperties(
         boolean requireEventId
 ) {
     public record CronProperties(
-            String qrRotation,
             String expiryCheck,
             String expiryWarning
     ) {}

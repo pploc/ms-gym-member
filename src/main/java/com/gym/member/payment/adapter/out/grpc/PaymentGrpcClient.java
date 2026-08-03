@@ -28,14 +28,15 @@ public class PaymentGrpcClient implements AutoCloseable {
         if (target == null || target.isBlank()) {
             this.channel = null;
             this.stub = null;
-        } else {
-            ManagedChannelBuilder<?> builder = ManagedChannelBuilder.forTarget(target);
-            if (properties.payment().usePlaintext()) {
-                builder.usePlaintext();
-            }
-            this.channel = builder.build();
-            this.stub = PaymentServiceGrpc.newBlockingStub(channel);
+            return;
         }
+
+        ManagedChannelBuilder<?> builder = ManagedChannelBuilder.forTarget(target);
+        if (properties.payment().usePlaintext()) {
+            builder.usePlaintext();
+        }
+        this.channel = builder.build();
+        this.stub = PaymentServiceGrpc.newBlockingStub(channel);
     }
 
     public InitiatePaymentResponse initiatePayment(InitiatePaymentRequest request) {

@@ -93,16 +93,18 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
         for (SubscriptionEntity sub : warningSubs) {
             MemberEntity member = memberMap.get(sub.getMemberId());
             MembershipPlanEntity plan = planMap.get(sub.getPlanId());
-            if (member != null && plan != null) {
-                boolean alreadySentToday = outboxEventRepository.existsByAggregateIdAndEventTypeAndCreatedAtGreaterThanEqual(
-                        member.getId(),
-                        "MembershipExpiringSoonEvent",
-                        startOfDay
-                );
-                if (!alreadySentToday) {
-                    MembershipExpiringSoonEvent event = eventFactory.createExpiringSoonEvent(member, sub, plan);
-                    outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRING_SOON, event);
-                }
+            if (member == null || plan == null) {
+                continue;
+            }
+
+            boolean alreadySentToday = outboxEventRepository.existsByAggregateIdAndEventTypeAndCreatedAtGreaterThanEqual(
+                    member.getId(),
+                    "MembershipExpiringSoonEvent",
+                    startOfDay
+            );
+            if (!alreadySentToday) {
+                MembershipExpiringSoonEvent event = eventFactory.createExpiringSoonEvent(member, sub, plan);
+                outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRING_SOON, event);
             }
         }
     }

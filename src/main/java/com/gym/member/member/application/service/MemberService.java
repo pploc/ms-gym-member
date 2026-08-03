@@ -55,8 +55,9 @@ public class MemberService implements MemberUseCase {
         GymLocationEntity gymLocation = gymLocationRepository.findById(gymId)
                 .orElseThrow(() -> new NotFoundException("Gym location not found with id: " + gymId));
 
-        if (memberRepository.findByUserId(userId).isPresent()) {
-            return memberMapper.toDto(memberRepository.findByUserId(userId).get());
+        var existingOpt = memberRepository.findByUserId(userId);
+        if (existingOpt.isPresent()) {
+            return memberMapper.toDto(existingOpt.get());
         }
 
         MemberEntity entity = new MemberEntity();
@@ -87,12 +88,10 @@ public class MemberService implements MemberUseCase {
     public NormalPage<MemberDto> listMembers(String gymId, int page, int limit) {
         int pageSize = limit > 0 ? Math.min(limit, 100) : 10;
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), pageSize);
-        Page<MemberEntity> memberPage;
-        if (gymId != null && !gymId.isBlank()) {
-            memberPage = memberRepository.findByGymId(gymId, pageRequest);
-        } else {
-            memberPage = memberRepository.findAll(pageRequest);
-        }
+        Page<MemberEntity> memberPage = (gymId != null && !gymId.isBlank())
+                ? memberRepository.findByGymId(gymId, pageRequest)
+                : memberRepository.findAll(pageRequest);
+
         return new NormalPage<>(
                 memberPage.getContent().stream().map(memberMapper::toDto).toList(),
                 memberPage.getNumber(),
@@ -107,12 +106,10 @@ public class MemberService implements MemberUseCase {
     @Transactional(readOnly = true)
     public List<MemberDto> listMembersByStatus(MembershipStatus status, List<String> gymIds) {
         PageRequest safetyLimit = PageRequest.of(0, MAX_UNBOUNDED_RESULT_LIMIT);
-        List<MemberEntity> entities;
-        if (gymIds != null && !gymIds.isEmpty()) {
-            entities = memberRepository.findByStatusAndGymIdIn(status, gymIds, safetyLimit);
-        } else {
-            entities = memberRepository.findByStatus(status, safetyLimit);
-        }
+        List<MemberEntity> entities = (gymIds != null && !gymIds.isEmpty())
+                ? memberRepository.findByStatusAndGymIdIn(status, gymIds, safetyLimit)
+                : memberRepository.findByStatus(status, safetyLimit);
+
         if (entities.size() >= MAX_UNBOUNDED_RESULT_LIMIT) {
             log.warn("listMembersByStatus reached safety limit threshold of {}. Query results may be truncated for status={}", MAX_UNBOUNDED_RESULT_LIMIT, status);
         }

@@ -210,8 +210,8 @@ class EventConsumerAdapterUnitTest {
         KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
 
         // Then
-        assertEquals(eventId, metadata.getEventId());
-        assertEquals(payload.getDescriptorForType().getFullName(), metadata.getEventType());
+        assertEquals(eventId, metadata.eventId());
+        assertEquals(payload.getDescriptorForType().getFullName(), metadata.eventType());
     }
 
     @Test

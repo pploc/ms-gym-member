@@ -62,23 +62,17 @@ public class GymLocationService implements GymLocationUseCase {
 
     @Transactional(readOnly = true)
     public List<GymLocationDto> listGymLocations(String chainId) {
-        List<GymLocationEntity> entities;
-        if (chainId != null && !chainId.isBlank()) {
-            entities = gymLocationRepository.findByChainId(chainId);
-        } else {
-            entities = gymLocationRepository.findAll();
-        }
+        List<GymLocationEntity> entities = (chainId != null && !chainId.isBlank())
+                ? gymLocationRepository.findByChainId(chainId)
+                : gymLocationRepository.findAll();
         return entities.stream().map(gymLocationMapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public List<PlanDto> getPlans(String gymId) {
-        List<MembershipPlanEntity> plans;
-        if (gymId != null && !gymId.isBlank()) {
-            plans = planRepository.findByGymIdAndActiveTrue(gymId);
-        } else {
-            plans = planRepository.findAll();
-        }
+        List<MembershipPlanEntity> plans = (gymId != null && !gymId.isBlank())
+                ? planRepository.findByGymIdAndActiveTrue(gymId)
+                : planRepository.findAll();
         return plans.stream().map(gymLocationMapper::toPlanDto).toList();
     }
 }

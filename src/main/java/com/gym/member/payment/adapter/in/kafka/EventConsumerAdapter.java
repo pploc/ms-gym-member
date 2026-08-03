@@ -23,24 +23,24 @@ public class EventConsumerAdapter {
     @KafkaListener(topics = "${gym.kafka.topics.user-registered:identity.user.registered}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
     public void handleUserRegistered(ConsumerRecord<String, UserRegisteredEvent> record, Acknowledgment ack) {
         KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
-        log.info("Received user registered event, key: {}, eventId: {}", record.key(), metadata.getEventId());
-        eventProcessingService.processUserRegistered(metadata.getEventId(), metadata.getEventType(), record.value());
+        log.info("Received user registered event, key: {}, eventId: {}", record.key(), metadata.eventId());
+        eventProcessingService.processUserRegistered(metadata.eventId(), metadata.eventType(), record.value());
         ack.acknowledge();
     }
 
     @KafkaListener(topics = "${gym.kafka.topics.payment-completed:payment.completed}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
     public void handlePaymentCompleted(ConsumerRecord<String, PaymentCompletedEvent> record, Acknowledgment ack) {
         KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
-        log.info("Received payment.completed event, key: {}, eventId: {}", record.key(), metadata.getEventId());
-        eventProcessingService.processPaymentCompleted(metadata.getEventId(), metadata.getEventType(), record.value(), record.key());
+        log.info("Received payment.completed event, key: {}, eventId: {}", record.key(), metadata.eventId());
+        eventProcessingService.processPaymentCompleted(metadata.eventId(), metadata.eventType(), record.value(), record.key());
         ack.acknowledge();
     }
 
     @KafkaListener(topics = "${gym.kafka.topics.user-suspended:identity.user.suspended}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
     public void handleUserSuspended(ConsumerRecord<String, UserSuspendedEvent> record, Acknowledgment ack) {
         KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
-        log.info("Received user suspended event, key: {}, eventId: {}", record.key(), metadata.getEventId());
-        eventProcessingService.processUserSuspended(metadata.getEventId(), metadata.getEventType(), record.value());
+        log.info("Received user suspended event, key: {}, eventId: {}", record.key(), metadata.eventId());
+        eventProcessingService.processUserSuspended(metadata.eventId(), metadata.eventType(), record.value());
         ack.acknowledge();
     }
 }
