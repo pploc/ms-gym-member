@@ -29,7 +29,9 @@ if (gprKey == null || gprKey.isEmpty()) {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven { url 'https://packages.confluent.io/maven/' }
     ['gym-proto', 'common-java'].each { repo ->
         maven {
             url = uri("https://maven.pkg.github.com/pploc/${repo}")
@@ -46,8 +48,8 @@ def grpcVersion = '1.68.1'
 def testcontainersVersion = '1.20.1'
 
 dependencies {
-    implementation 'com.gym:common-java:1.0.1'
-    implementation 'com.gym.proto:gym-proto-java:1.0.2'
+    implementation 'com.gym:common-java:1.0.6'
+    implementation 'com.gym.proto:gym-proto-java:1.0.6'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -89,6 +91,7 @@ def jacocoExcludes = [
         'com/gym/member/**/model/**',
         'com/gym/member/**/exception/**',
         'com/gym/member/**/entity/**',
+        'com/gym/member/**/specification/**',
         'com/gym/member/util/**'
 ]
 

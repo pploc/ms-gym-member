@@ -128,15 +128,7 @@ grpcurl -plaintext \
 
 ## 5. Check-in Gateway Integration (Internal APIs)
 
-### 13. `GetGymDailySecret`
-```bash
-grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"gym_id": "22222222-2222-2222-2222-222222222222"}' \
-  172.20.76.101:50051 member.v1.MemberService/GetGymDailySecret
-```
-
-### 14. `ValidateMembership`
+### 13. `ValidateMembership`
 ```bash
 grpcurl -plaintext \
   -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
@@ -144,7 +136,7 @@ grpcurl -plaintext \
   172.20.76.101:50051 member.v1.MemberService/ValidateMembership
 ```
 
-### 15. `ListMembersByStatus`
+### 14. `ListMembersByStatus`
 ```bash
 grpcurl -plaintext \
   -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \

@@ -28,11 +28,26 @@ public class OutboxPayloadParser {
     private final List<String> packageSearchPaths = new CopyOnWriteArrayList<>(DEFAULT_EVENT_PACKAGES);
 
     public OutboxPayloadParser() {
-        registerSupplier("MembershipActivatedEvent", MembershipActivatedEvent::newBuilder);
-        registerSupplier("MembershipPausedEvent", MembershipPausedEvent::newBuilder);
-        registerSupplier("MembershipResumedEvent", MembershipResumedEvent::newBuilder);
-        registerSupplier("MembershipExpiringSoonEvent", MembershipExpiringSoonEvent::newBuilder);
-        registerSupplier("MembershipExpiredEvent", MembershipExpiredEvent::newBuilder);
+        registerEventClass(MembershipActivatedEvent.class);
+        registerEventClass(MembershipPausedEvent.class);
+        registerEventClass(MembershipResumedEvent.class);
+        registerEventClass(MembershipExpiringSoonEvent.class);
+        registerEventClass(MembershipExpiredEvent.class);
+    }
+
+    private void registerEventClass(Class<? extends Message> clazz) {
+        try {
+            Method newBuilderMethod = clazz.getMethod("newBuilder");
+            Supplier<Message.Builder> supplier = () -> invokeNewBuilder(newBuilderMethod);
+            builderSuppliers.put(clazz.getSimpleName(), supplier);
+            builderSuppliers.put(clazz.getName(), supplier);
+
+            Method getDescriptorMethod = clazz.getMethod("getDescriptor");
+            com.google.protobuf.Descriptors.Descriptor descriptor = (com.google.protobuf.Descriptors.Descriptor) getDescriptorMethod.invoke(null);
+            builderSuppliers.put(descriptor.getFullName(), supplier);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to register outbox event class: " + clazz.getName(), e);
+        }
     }
 
     public void registerSupplier(String eventType, Supplier<Message.Builder> builderSupplier) {
@@ -60,16 +75,39 @@ public class OutboxPayloadParser {
     }
 
     public Message parse(String eventType, String payload) {
-        if (eventType == null || eventType.isBlank()) {
+        return parse(null, eventType, payload);
+    }
+
+    public Message parse(String payloadType, String eventType, String payload) {
+        String primaryType = (payloadType != null && !payloadType.isBlank()) ? payloadType : eventType;
+        if (primaryType == null || primaryType.isBlank()) {
             throw new IllegalArgumentException("Payload event type cannot be null or blank");
         }
         try {
-            Supplier<Message.Builder> supplier = builderSuppliers.computeIfAbsent(eventType, this::findBuilderSupplier);
+            Supplier<Message.Builder> supplier = builderSuppliers.get(primaryType);
+            if (supplier == null) {
+                supplier = findBuilderSupplier(primaryType);
+                if (supplier == null && payloadType != null && !payloadType.isBlank() && eventType != null && !eventType.isBlank()) {
+                    supplier = builderSuppliers.computeIfAbsent(eventType, this::findBuilderSupplier);
+                } else if (supplier != null) {
+                    builderSuppliers.put(primaryType, supplier);
+                }
+            }
             Message.Builder builder = supplier.get();
             PARSER.merge(payload, builder);
             return builder.build();
         } catch (Exception e) {
-            throw new IllegalArgumentException("Unable to parse outbox payload for eventType: " + eventType, e);
+            if (payloadType != null && !payloadType.isBlank() && eventType != null && !eventType.isBlank() && !payloadType.equals(eventType)) {
+                try {
+                    Supplier<Message.Builder> fallbackSupplier = builderSuppliers.computeIfAbsent(eventType, this::findBuilderSupplier);
+                    Message.Builder builder = fallbackSupplier.get();
+                    PARSER.merge(payload, builder);
+                    return builder.build();
+                } catch (Exception ignored) {
+                    // Fallthrough to throw primary exception
+                }
+            }
+            throw new IllegalArgumentException("Unable to parse outbox payload for type: " + primaryType, e);
         }
     }
 
@@ -80,7 +118,7 @@ public class OutboxPayloadParser {
                 Method method = clazz.getMethod("newBuilder");
                 return () -> invokeNewBuilder(method);
             } catch (ReflectiveOperationException e) {
-                throw new IllegalArgumentException("Unsupported outbox event type: " + eventType, e);
+                // Return null to allow fallback searching
             }
         }
 

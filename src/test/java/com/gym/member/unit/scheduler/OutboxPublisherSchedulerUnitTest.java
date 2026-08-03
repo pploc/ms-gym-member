@@ -1,14 +1,12 @@
 package com.gym.member.unit.scheduler;
 
-
 import com.google.protobuf.Message;
-
 import com.gym.common.kafka.producer.EventPublisher;
+import com.gym.member.config.MemberProperties;
 import com.gym.member.shared.outbox.entity.OutboxEventEntity;
 import com.gym.member.shared.outbox.scheduler.OutboxPublisherScheduler;
 import com.gym.member.shared.outbox.service.OutboxPayloadParser;
 import com.gym.member.shared.outbox.service.OutboxRelayService;
-import com.gym.member.config.MemberProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +51,7 @@ class OutboxPublisherSchedulerUnitTest {
         outboxEvent.setId(UUID.randomUUID());
         outboxEvent.setAggregateId("agg-123");
         outboxEvent.setEventType("MembershipActivatedEvent");
+        outboxEvent.setPayloadType("events.v1.MembershipActivatedEvent");
         outboxEvent.setTopic("membership.activated");
         outboxEvent.setPayload("payload-json");
         outboxEvent.setStatus(OutboxEventEntity.OutboxStatus.PENDING);
@@ -69,13 +68,28 @@ class OutboxPublisherSchedulerUnitTest {
     void givenPendingOutboxEvents_whenProcessOutboxEvents_thenPublishesAndMarksPublished() {
         // Given
         when(outboxRelayService.claimBatch(anyInt(), any(Duration.class))).thenReturn(List.of(outboxEvent));
-        when(payloadParser.parse("MembershipActivatedEvent", "payload-json")).thenReturn(mockMessage);
+        when(payloadParser.parse("events.v1.MembershipActivatedEvent", "MembershipActivatedEvent", "payload-json")).thenReturn(mockMessage);
 
         // When
         scheduler.processOutboxEvents();
 
         // Then
-        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("agg-123"), eq(mockMessage), anyMap());
+        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("agg-123"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
+        verify(outboxRelayService, times(1)).markPublished(outboxEvent.getId());
+    }
+
+    @Test
+    void givenKafkaKeySet_whenProcessOutboxEvents_thenPublishesWithKafkaKey() {
+        // Given
+        outboxEvent.setKafkaKey("custom-key-456");
+        when(outboxRelayService.claimBatch(anyInt(), any(Duration.class))).thenReturn(List.of(outboxEvent));
+        when(payloadParser.parse("events.v1.MembershipActivatedEvent", "MembershipActivatedEvent", "payload-json")).thenReturn(mockMessage);
+
+        // When
+        scheduler.processOutboxEvents();
+
+        // Then
+        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("custom-key-456"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
         verify(outboxRelayService, times(1)).markPublished(outboxEvent.getId());
     }
 
@@ -83,7 +97,7 @@ class OutboxPublisherSchedulerUnitTest {
     void givenPublishFailure_whenProcessOutboxEvents_thenMarksFailedOrRetry() {
         // Given
         when(outboxRelayService.claimBatch(anyInt(), any(Duration.class))).thenReturn(List.of(outboxEvent));
-        when(payloadParser.parse(anyString(), anyString())).thenThrow(new IllegalArgumentException("Invalid payload"));
+        when(payloadParser.parse(any(), any(), any())).thenThrow(new IllegalArgumentException("Invalid payload"));
 
         // When
         scheduler.processOutboxEvents();

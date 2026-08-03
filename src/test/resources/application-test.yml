@@ -19,3 +19,9 @@ spring:
 grpc:
   server:
     port: 0
+
+gym:
+  kafka:
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+    auto-register-schemas: true
+

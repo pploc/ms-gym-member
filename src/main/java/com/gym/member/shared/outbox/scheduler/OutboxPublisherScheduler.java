@@ -2,10 +2,10 @@ package com.gym.member.shared.outbox.scheduler;
 
 import com.google.protobuf.Message;
 import com.gym.common.kafka.producer.EventPublisher;
+import com.gym.member.config.MemberProperties;
 import com.gym.member.shared.outbox.entity.OutboxEventEntity;
 import com.gym.member.shared.outbox.service.OutboxPayloadParser;
 import com.gym.member.shared.outbox.service.OutboxRelayService;
-import com.gym.member.config.MemberProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,11 +37,11 @@ public class OutboxPublisherScheduler {
 
     protected void publish(OutboxEventEntity event) {
         try {
-            Message payload = payloadParser.parse(event.getEventType(), event.getPayload());
+            Message payload = payloadParser.parse(event.getPayloadType(), event.getEventType(), event.getPayload());
             String key = event.getKafkaKey() != null && !event.getKafkaKey().isBlank()
                     ? event.getKafkaKey()
                     : event.getAggregateId();
-            eventPublisher.publish(event.getTopic(), key, payload, Map.of("eventId", event.getId().toString()));
+            eventPublisher.publish(event.getTopic(), key, payload, event.getId().toString(), Map.of());
             outboxRelayService.markPublished(event.getId());
         } catch (Exception e) {
             outboxRelayService.markFailedOrRetry(event.getId(), e);

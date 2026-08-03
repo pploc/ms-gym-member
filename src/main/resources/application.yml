@@ -22,11 +22,6 @@ spring:
     consumer:
       group-id: ms-gym-member-group-v3
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: com.gym.common.kafka.message.EventEnvelopeDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: com.gym.common.kafka.message.EventEnvelopeSerializer
 
 server:
   port: 8080
@@ -64,10 +59,18 @@ app:
 
 gym:
   kafka:
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+    value-subject-name-strategy: io.confluent.kafka.serializers.subject.TopicNameStrategy
+    auto-register-schemas: ${SCHEMA_AUTO_REGISTER:false}
+    publish-timeout: ${KAFKA_PUBLISH_TIMEOUT:PT25S}
+    dlq:
+      suffix: .DLQ
     retry:
-      max-attempts: ${KAFKA_RETRY_MAX_ATTEMPTS:3}
-      initial-interval-ms: ${KAFKA_RETRY_INITIAL_INTERVAL_MS:1000}
+      enabled: true
+      retry-count: ${KAFKA_RETRY_COUNT:3}
+      initial-interval: ${KAFKA_RETRY_INITIAL_INTERVAL:PT2S}
       multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+      max-interval: ${KAFKA_RETRY_MAX_INTERVAL:PT8S}
     topics:
       user-registered: ${TOPIC_USER_REGISTERED:identity.user.registered}
       payment-completed: ${TOPIC_PAYMENT_COMPLETED:payment.completed}

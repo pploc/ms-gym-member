@@ -1,16 +1,16 @@
 package com.gym.member.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.gym.common.kafka.message.EventEnvelope;
-import com.gym.common.kafka.message.EventEnvelopeSerializer;
+import com.google.protobuf.Message;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
@@ -19,19 +19,16 @@ public class TestEventSeeder {
 
     public static void main(String[] args) {
         String bootstrapServers = System.getProperty("kafka.bootstrap", "localhost:9092");
-        System.out.println("Connecting to Kafka at: " + bootstrapServers);
+        String schemaRegistryUrl = System.getProperty("schema.registry.url", "http://localhost:8081");
+        System.out.println("Connecting to Kafka at: " + bootstrapServers + ", Schema Registry: " + schemaRegistryUrl);
 
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaProtobufSerializer.class.getName());
+        props.put("schema.registry.url", schemaRegistryUrl);
 
-        ObjectMapper mapper = new ObjectMapper();
-        SimpleModule module = new SimpleModule();
-        module.addSerializer(EventEnvelope.class, (com.fasterxml.jackson.databind.JsonSerializer) new EventEnvelopeSerializer());
-        mapper.registerModule(module);
-
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
+        try (KafkaProducer<String, Message> producer = new KafkaProducer<>(props)) {
             String testUserId = "11111111-1111-1111-1111-111111111111";
             String testGymId = "22222222-2222-2222-2222-222222222222";
 
@@ -46,22 +43,10 @@ public class TestEventSeeder {
                     .setTimestamp(Instant.now().toEpochMilli())
                     .build();
 
-            EventEnvelope<UserRegisteredEvent> regEnvelope = new EventEnvelope<>(
-                    "UserRegisteredEvent",
-                    testUserId,
-                    registeredEvent,
-                    Instant.now().toEpochMilli(),
-                    UUID.randomUUID().toString(),
-                    "ms-gym-identifier"
-            );
+            String regEventId = UUID.randomUUID().toString();
+            ProducerRecord<String, Message> regRecord = new ProducerRecord<>("identity.user.registered", testUserId, registeredEvent);
+            addCanonicalHeaders(regRecord, regEventId, registeredEvent.getDescriptorForType().getFullName(), "ms-gym-identifier");
 
-            org.apache.kafka.common.header.Header typeHeader = new org.apache.kafka.common.header.internals.RecordHeader(
-                    "__TypeId__",
-                    "com.gym.common.kafka.message.EventEnvelope".getBytes(java.nio.charset.StandardCharsets.UTF_8)
-            );
-
-            ProducerRecord<String, String> regRecord = new ProducerRecord<>("identity.user.registered", testUserId, mapper.writeValueAsString(regEnvelope));
-            regRecord.headers().add(typeHeader);
             producer.send(regRecord).get();
             System.out.println("Published identity.user.registered event for user_id: " + testUserId);
 
@@ -72,24 +57,17 @@ public class TestEventSeeder {
                     .setPaymentId(UUID.randomUUID().toString())
                     .setUserId(testUserId)
                     .setType("MEMBERSHIP")
-                    .setReferenceId(testPlanId) // planId
+                    .setReferenceId(testPlanId)
                     .setAmountVnd(500000)
                     .setProvider("MOMO")
                     .setGymId(testGymId)
                     .setTimestamp(Instant.now().toEpochMilli())
                     .build();
 
-            EventEnvelope<PaymentCompletedEvent> payEnvelope = new EventEnvelope<>(
-                    "PaymentCompletedEvent",
-                    testUserId,
-                    paymentEvent,
-                    Instant.now().toEpochMilli(),
-                    UUID.randomUUID().toString(),
-                    "ms-gym-payment"
-            );
+            String payEventId = UUID.randomUUID().toString();
+            ProducerRecord<String, Message> payRecord = new ProducerRecord<>("payment.completed", testUserId, paymentEvent);
+            addCanonicalHeaders(payRecord, payEventId, paymentEvent.getDescriptorForType().getFullName(), "ms-gym-payment");
 
-            ProducerRecord<String, String> payRecord = new ProducerRecord<>("payment.completed", testUserId, mapper.writeValueAsString(payEnvelope));
-            payRecord.headers().add(typeHeader);
             producer.send(payRecord).get();
             System.out.println("Published payment.completed event for user_id: " + testUserId);
 
@@ -99,5 +77,13 @@ public class TestEventSeeder {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    private static void addCanonicalHeaders(ProducerRecord<String, Message> record, String eventId, String eventType, String source) {
+        long ts = Instant.now().toEpochMilli();
+        record.headers().add(new RecordHeader("event-id", eventId.getBytes(StandardCharsets.UTF_8)));
+        record.headers().add(new RecordHeader("event-type", eventType.getBytes(StandardCharsets.UTF_8)));
+        record.headers().add(new RecordHeader("source", source.getBytes(StandardCharsets.UTF_8)));
+        record.headers().add(new RecordHeader("timestamp", String.valueOf(ts).getBytes(StandardCharsets.UTF_8)));
     }
 }

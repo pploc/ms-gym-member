@@ -3,24 +3,22 @@ package com.gym.member.unit.service;
 import com.gym.common.error.NotFoundException;
 import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.location.adapter.out.persistence.entity.GymQRSecretEntity;
+import com.gym.member.location.adapter.out.persistence.mapper.GymQRSecretMapper;
 import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.location.adapter.out.persistence.repository.GymQRSecretJpaRepository;
 import com.gym.member.location.application.service.GymQRService;
 import com.gym.member.location.domain.dto.GymDailySecretDto;
 import com.gym.member.location.domain.model.GymLocationStatus;
-import com.gym.member.location.adapter.out.persistence.mapper.GymQRSecretMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mapstruct.factory.Mappers;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,76 +36,73 @@ class GymQRServiceUnitTest {
     @Mock
     private GymLocationJpaRepository gymLocationRepository;
 
-    @Spy
-    private GymQRSecretMapper gymQRSecretMapper = Mappers.getMapper(GymQRSecretMapper.class);
+    @Mock
+    private GymQRSecretMapper gymQRSecretMapper;
 
-    @Spy
-    private Clock clock = Clock.systemUTC();
-
-    @InjectMocks
+    private Clock clock;
     private GymQRService gymQRService;
-
-    private String gymId;
-    private GymQRSecretEntity secretEntity;
-    private GymLocationEntity gymLocationEntity;
 
     @BeforeEach
     void setUp() {
-        gymId = UUID.randomUUID().toString();
-        secretEntity = new GymQRSecretEntity();
-        secretEntity.setGymId(gymId);
-        secretEntity.setDailySecret("secret123");
-        secretEntity.setUpdatedAt(Instant.now());
-
-        gymLocationEntity = new GymLocationEntity();
-        gymLocationEntity.setId(gymId);
-        gymLocationEntity.setStatus(GymLocationStatus.ACTIVE);
+        clock = Clock.fixed(Instant.parse("2026-08-03T10:00:00Z"), ZoneId.of("UTC"));
+        gymQRService = new GymQRService(qrSecretRepository, gymLocationRepository, gymQRSecretMapper, clock);
     }
 
     @Test
-    void givenExistingGymSecret_whenGetGymDailySecret_thenReturnsDailySecretDto() {
-        // Given
-        when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
+    void givenExistingGym_whenGetGymDailySecret_returnsDto() {
+        String gymId = UUID.randomUUID().toString();
+        GymQRSecretEntity entity = new GymQRSecretEntity();
+        entity.setGymId(gymId);
+        entity.setDailySecret("secret-123");
+        entity.setUpdatedAt(Instant.now(clock));
 
-        // When
-        GymDailySecretDto dto = gymQRService.getGymDailySecret(gymId);
+        GymDailySecretDto dto = new GymDailySecretDto(UUID.fromString(gymId), "secret-123");
 
-        // Then
-        assertNotNull(dto);
-        assertEquals("secret123", dto.dailySecret());
+        when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(entity));
+        when(gymQRSecretMapper.toDto(entity)).thenReturn(dto);
+
+        GymDailySecretDto result = gymQRService.getGymDailySecret(gymId);
+        assertNotNull(result);
+        assertEquals("secret-123", result.dailySecret());
     }
 
     @Test
-    void givenMissingGymSecret_whenGetGymDailySecret_thenThrowsNotFoundException() {
-        // Given
+    void givenNonExistentGym_whenGetGymDailySecret_throwsNotFoundException() {
+        String gymId = UUID.randomUUID().toString();
         when(qrSecretRepository.findById(gymId)).thenReturn(Optional.empty());
 
-        // When & Then
         assertThrows(NotFoundException.class, () -> gymQRService.getGymDailySecret(gymId));
     }
 
     @Test
-    void givenActiveGymLocations_whenRotateAllGymDailySecrets_thenSavesRotatedSecrets() {
-        // Given
-        when(gymLocationRepository.findByStatus(GymLocationStatus.ACTIVE)).thenReturn(List.of(gymLocationEntity));
-        when(qrSecretRepository.findById(gymId)).thenReturn(Optional.of(secretEntity));
+    void whenRotateAllGymDailySecrets_updatesExistingAndNewEntities() {
+        String gymId1 = UUID.randomUUID().toString();
+        String gymId2 = UUID.randomUUID().toString();
 
-        // When
+        GymLocationEntity loc1 = new GymLocationEntity();
+        loc1.setId(gymId1);
+        loc1.setStatus(GymLocationStatus.ACTIVE);
+
+        GymLocationEntity loc2 = new GymLocationEntity();
+        loc2.setId(gymId2);
+        loc2.setStatus(GymLocationStatus.ACTIVE);
+
+        GymQRSecretEntity entity1 = new GymQRSecretEntity();
+        entity1.setGymId(gymId1);
+        entity1.setDailySecret("old-secret");
+
+        when(gymLocationRepository.findByStatus(GymLocationStatus.ACTIVE)).thenReturn(List.of(loc1, loc2));
+        when(qrSecretRepository.findById(gymId1)).thenReturn(Optional.of(entity1));
+        when(qrSecretRepository.findById(gymId2)).thenReturn(Optional.empty());
+
         gymQRService.rotateAllGymDailySecrets();
 
-        // Then
-        verify(qrSecretRepository, times(1)).save(any());
+        verify(qrSecretRepository, times(2)).save(any(GymQRSecretEntity.class));
     }
 
     @Test
-    void givenMemberSecretAndDate_whenComputeDailyToken_thenReturnsSha256TokenString() {
-        // Given
-        LocalDate now = LocalDate.now();
-
-        // When
-        String token = gymQRService.computeDailyToken(gymId, "secret123", now);
-
-        // Then
+    void testComputeDailyToken() {
+        String token = gymQRService.computeDailyToken("gym-1", "secret-123", LocalDate.of(2026, 8, 3));
         assertNotNull(token);
         assertFalse(token.isBlank());
     }

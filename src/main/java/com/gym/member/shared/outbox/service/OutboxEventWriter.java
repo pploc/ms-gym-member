@@ -29,6 +29,7 @@ public class OutboxEventWriter {
             event.setAggregateType(aggregateType);
             event.setAggregateId(aggregateId);
             event.setEventType(payload.getClass().getSimpleName());
+            event.setPayloadType(payload.getDescriptorForType().getFullName());
             event.setTopic(topic);
             event.setPayload(JSON_PRINTER.print(payload));
             event.setStatus(OutboxEventEntity.OutboxStatus.PENDING);

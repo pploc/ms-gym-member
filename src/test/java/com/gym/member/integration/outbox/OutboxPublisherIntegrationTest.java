@@ -1,6 +1,5 @@
 package com.gym.member.integration.outbox;
 
-
 import com.google.protobuf.util.JsonFormat;
 import com.gym.member.shared.outbox.entity.OutboxEventEntity;
 import com.gym.member.shared.outbox.repository.OutboxEventJpaRepository;
@@ -60,6 +59,7 @@ class OutboxPublisherIntegrationTest {
         event.setAggregateType("member");
         event.setAggregateId(UUID.randomUUID().toString());
         event.setEventType("MembershipActivatedEvent");
+        event.setPayloadType(proto.getDescriptorForType().getFullName());
         event.setTopic("membership.activated");
         event.setPayload(payloadJson);
         event.setStatus(OutboxEventEntity.OutboxStatus.PENDING);

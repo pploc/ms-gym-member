@@ -1,13 +1,13 @@
 package com.gym.member.payment.adapter.in.kafka;
 
-import com.gym.common.kafka.message.EventEnvelope;
-import com.gym.member.member.application.service.MemberEventProcessingService;
 import com.gym.member.config.MemberProperties;
+import com.gym.member.member.application.service.MemberEventProcessingService;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import com.gym.proto.events.v1.UserRegisteredEvent;
 import com.gym.proto.events.v1.UserSuspendedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
@@ -21,40 +21,26 @@ public class EventConsumerAdapter {
     private final MemberProperties properties;
 
     @KafkaListener(topics = "${gym.kafka.topics.user-registered:identity.user.registered}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
-    public void handleUserRegistered(EventEnvelope<UserRegisteredEvent> envelope, Acknowledgment ack) {
-        String eventId = resolveEventId(envelope);
-        log.info("Received user registered event, key: {}, eventId: {}", envelope.key(), eventId);
-        eventProcessingService.processUserRegistered(eventId, envelope.eventType(), envelope.payload());
+    public void handleUserRegistered(ConsumerRecord<String, UserRegisteredEvent> record, Acknowledgment ack) {
+        KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
+        log.info("Received user registered event, key: {}, eventId: {}", record.key(), metadata.getEventId());
+        eventProcessingService.processUserRegistered(metadata.getEventId(), metadata.getEventType(), record.value());
         ack.acknowledge();
     }
 
     @KafkaListener(topics = "${gym.kafka.topics.payment-completed:payment.completed}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
-    public void handlePaymentCompleted(EventEnvelope<PaymentCompletedEvent> envelope, Acknowledgment ack) {
-        String eventId = resolveEventId(envelope);
-        log.info("Received payment.completed event, key: {}, eventId: {}", envelope.key(), eventId);
-        eventProcessingService.processPaymentCompleted(eventId, envelope.eventType(), envelope.payload(), envelope.key());
+    public void handlePaymentCompleted(ConsumerRecord<String, PaymentCompletedEvent> record, Acknowledgment ack) {
+        KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
+        log.info("Received payment.completed event, key: {}, eventId: {}", record.key(), metadata.getEventId());
+        eventProcessingService.processPaymentCompleted(metadata.getEventId(), metadata.getEventType(), record.value(), record.key());
         ack.acknowledge();
     }
 
     @KafkaListener(topics = "${gym.kafka.topics.user-suspended:identity.user.suspended}", groupId = "${spring.kafka.consumer.group-id:ms-gym-member-group}")
-    public void handleUserSuspended(EventEnvelope<UserSuspendedEvent> envelope, Acknowledgment ack) {
-        String eventId = resolveEventId(envelope);
-        log.info("Received user suspended event, key: {}, eventId: {}", envelope.key(), eventId);
-        eventProcessingService.processUserSuspended(eventId, envelope.eventType(), envelope.payload());
+    public void handleUserSuspended(ConsumerRecord<String, UserSuspendedEvent> record, Acknowledgment ack) {
+        KafkaEventMetadata metadata = KafkaEventMetadata.extractAndValidate(record, properties);
+        log.info("Received user suspended event, key: {}, eventId: {}", record.key(), metadata.getEventId());
+        eventProcessingService.processUserSuspended(metadata.getEventId(), metadata.getEventType(), record.value());
         ack.acknowledge();
-    }
-
-    private static final String LEGACY_EVENT_ID_PREFIX = "legacy:";
-
-    private String resolveEventId(EventEnvelope<?> envelope) {
-        if (envelope.traceId() != null && !envelope.traceId().isBlank()) {
-            return envelope.traceId();
-        }
-        if (properties.requireEventId()) {
-            throw new IllegalArgumentException("Event envelope missing required event_id for strict DLT processing");
-        }
-        String fallbackId = LEGACY_EVENT_ID_PREFIX + envelope.source() + ":" + envelope.eventType() + ":" + envelope.key() + ":" + envelope.timestamp();
-        log.warn("Missing event_id in event envelope; using metered compatibility fallback event ID: {}", fallbackId);
-        return fallbackId;
     }
 }

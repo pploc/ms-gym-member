@@ -14,8 +14,9 @@
 - **Subscription State Machine**:
   - Flexible plans: `MONTHLY`, `YEARLY`, `LIFETIME`
   - Pause & Resume rules: max 30-day pause limit, max 2 pauses per cycle, `LIFETIME` pause restriction (`CannotPauseLifetimeException`)
-- **Gym Location Management**: CRUD for gym locations and daily door QR secrets (`gym_qr_secrets`)
-- **Daily Gym Door QR Secret Generation**: SHA-256 rotating daily secret (`SHA256(gym_id + today + daily_secret)`)
+- **Gym Location Management**: CRUD for canonical gym locations
+- **Check-in Authorization**: Supplies canonical gym details and validates active membership for the future Check-in Service
+- **QR Boundary**: Check-in owns kiosk credentials, QR root keys, payload issuance, and validation
 - **Event-Driven Integration**:
   - Consumes `identity.user.registered`, `payment.completed`
   - Publishes `membership.activated`, `membership.paused`, `membership.resumed`, `membership.expiring-soon`, `membership.expired`
@@ -44,10 +45,10 @@ src/main/java/com/gym/member/
 │   ├── domain/                # Aggregates, Enums, DTOs, Events, Exceptions
 │   ├── application/           # Member & Subscription Use Cases, Services, Schedulers
 │   └── adapter/               # gRPC Inbound Delegates/Handlers, Persistence Entities & Repositories
-├── location/                  # Bounded Context: Gym Location & Door QR Secret Domain
+├── location/                  # Bounded Context: Gym Location Domain
 │   ├── domain/                # Gym Location Models & DTOs
-│   ├── application/           # GymLocation & Daily Door QR Services & Rotation Schedulers
-│   └── adapter/               # Gym Location gRPC Handlers, Persistence Entities & Repositories
+│   ├── application/           # Gym location use cases and services
+│   └── adapter/               # Gym Location gRPC handlers and persistence adapters
 ├── payment/                   # Bounded Context: Payment Integration & Event Listener
 │   └── adapter/               # Payment gRPC Client & Kafka Event Consumer Adapters
 ├── shared/                    # Shared Infrastructure Context
