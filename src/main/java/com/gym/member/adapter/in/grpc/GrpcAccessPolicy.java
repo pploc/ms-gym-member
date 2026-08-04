@@ -12,9 +12,17 @@ public final class GrpcAccessPolicy {
     private GrpcAccessPolicy() {}
 
     public static void requireSelf(MemberDto member) {
+        String role = GrpcSecurityContext.getRole();
+        if (isSuperAdmin() || "ADMIN".equals(role) || isServiceRole(role)) {
+            return;
+        }
         if (!Objects.equals(GrpcSecurityContext.getUserId(), member.userId().toString())) {
             throw new ForbiddenException("Member access is outside the authenticated user scope");
         }
+    }
+
+    private static boolean isServiceRole(String role) {
+        return role != null && role.endsWith("_SERVICE");
     }
 
     public static void requireGym(String gymId) {

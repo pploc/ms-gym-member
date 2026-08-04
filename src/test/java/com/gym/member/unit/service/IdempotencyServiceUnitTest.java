@@ -95,4 +95,15 @@ class IdempotencyServiceUnitTest {
         // Then
         verify(repository, times(1)).save(any(ProcessedEventEntity.class));
     }
+
+    @Test
+    void givenClaimedEvent_whenReleaseClaim_thenDeletesFromRepository() {
+        // Given - Claimed event
+
+        // When
+        idempotencyService.releaseClaim(eventId);
+
+        // Then
+        verify(repository, times(1)).deleteById(eventId);
+    }
 }

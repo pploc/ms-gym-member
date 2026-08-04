@@ -1,6 +1,5 @@
 package com.gym.member.member.adapter.in.grpc;
 
-import com.gym.common.grpc.security.RequireRole;
 import com.gym.common.pagination.NormalPage;
 import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
@@ -35,7 +34,6 @@ public class MemberGrpcDelegate {
     private final MemberUseCase memberUseCase;
     private final MemberMapper memberMapper;
 
-    @RequireRole("CUSTOMER")
     public void getMember(GetMemberRequest request, StreamObserver<MemberResponse> responseObserver) {
         execute(responseObserver, () -> {
             MemberDto dto = memberUseCase.getMember(request.getMemberId());
@@ -44,7 +42,6 @@ public class MemberGrpcDelegate {
         });
     }
 
-    @RequireRole("CUSTOMER")
     public void updateProfile(UpdateProfileRequest request, StreamObserver<MemberResponse> responseObserver) {
         execute(responseObserver, () -> {
             MemberDto current = memberUseCase.getMember(request.getMemberId());
@@ -63,7 +60,6 @@ public class MemberGrpcDelegate {
         });
     }
 
-    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         execute(responseObserver, () -> {
             if (!request.getGymId().isBlank()) {
@@ -78,7 +74,6 @@ public class MemberGrpcDelegate {
         });
     }
 
-    @RequireRole("CHECKIN_SERVICE")
     public void validateMembership(ValidateMembershipRequest request, StreamObserver<ValidateMembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireServiceGym(request.getGymId());
@@ -91,7 +86,6 @@ public class MemberGrpcDelegate {
         });
     }
 
-    @RequireRole("NOTIFICATION_SERVICE")
     public void listMembersByStatus(ListMembersByStatusRequest request, StreamObserver<ListMembersByStatusResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireGymIds(request.getGymIdsList());

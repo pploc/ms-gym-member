@@ -1,5 +1,6 @@
 package com.gym.member.integration.kafka;
 
+import com.google.protobuf.Message;
 import com.gym.common.kafka.producer.EventPublisher;
 import com.gym.proto.events.v1.MembershipActivatedEvent;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -28,12 +29,12 @@ class EventPublisherIntegrationTest {
     private EventPublisher eventPublisher;
 
     @MockitoBean
-    private KafkaTemplate<String, Object> kafkaTemplate;
+    private KafkaTemplate<String, Message> kafkaTemplate;
 
     @Test
     void givenValidEventPayload_whenPublish_thenSendsKafkaProducerRecordWithCanonicalHeadersAndProtobufPayload() {
         // Given
-        String topic = "membership.activated";
+        String topic = "membership.activated.v1";
         String key = UUID.randomUUID().toString();
         String eventId = UUID.randomUUID().toString();
         MembershipActivatedEvent event = MembershipActivatedEvent.newBuilder()
@@ -49,10 +50,10 @@ class EventPublisherIntegrationTest {
         eventPublisher.publish(topic, key, event, eventId, java.util.Map.of());
 
         // Then
-        ArgumentCaptor<ProducerRecord<String, Object>> recordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
+        ArgumentCaptor<ProducerRecord<String, Message>> recordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaTemplate).send(recordCaptor.capture());
 
-        ProducerRecord<String, Object> capturedRecord = recordCaptor.getValue();
+        ProducerRecord<String, Message> capturedRecord = recordCaptor.getValue();
         assertThat(capturedRecord.topic()).isEqualTo(topic);
         assertThat(capturedRecord.key()).isEqualTo(key);
 

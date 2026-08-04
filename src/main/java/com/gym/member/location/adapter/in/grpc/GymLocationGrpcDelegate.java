@@ -1,6 +1,5 @@
 package com.gym.member.location.adapter.in.grpc;
 
-import com.gym.common.grpc.security.RequireRole;
 import com.gym.member.location.application.port.in.GymLocationUseCase;
 import com.gym.member.location.domain.dto.GymLocationDto;
 import com.gym.member.member.domain.dto.PlanDto;
@@ -30,7 +29,6 @@ public class GymLocationGrpcDelegate {
     private final GymLocationUseCase gymLocationUseCase;
     private final GymLocationMapper gymLocationMapper;
 
-    @RequireRole({"CUSTOMER", "ADMIN", "SUPER_ADMIN"})
     public void getPlans(GetPlansRequest request, StreamObserver<PlansResponse> responseObserver) {
         execute(responseObserver, () -> {
             if (!request.getGymId().isBlank()) {
@@ -43,7 +41,6 @@ public class GymLocationGrpcDelegate {
         });
     }
 
-    @RequireRole("SUPER_ADMIN")
     public void createGymLocation(CreateGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         execute(responseObserver, () -> {
             GymLocationDto dto = gymLocationUseCase.createGymLocation(
@@ -56,7 +53,6 @@ public class GymLocationGrpcDelegate {
         });
     }
 
-    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     public void updateGymLocation(UpdateGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireGym(gymLocationUseCase.getGymLocation(request.getId()).id().toString());
@@ -71,7 +67,6 @@ public class GymLocationGrpcDelegate {
         });
     }
 
-    @RequireRole({"ADMIN", "SUPER_ADMIN"})
     public void listGymLocations(ListGymLocationsRequest request, StreamObserver<GymLocationsResponse> responseObserver) {
         execute(responseObserver, () -> {
             List<GymLocationDto> dtos = gymLocationUseCase.listGymLocations(request.getChainId());
@@ -80,7 +75,6 @@ public class GymLocationGrpcDelegate {
         });
     }
 
-    @RequireRole({"ADMIN", "SUPER_ADMIN", "CHECKIN_SERVICE"})
     public void getGymLocation(GetGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireGym(request.getId());

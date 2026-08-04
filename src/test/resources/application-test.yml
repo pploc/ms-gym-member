@@ -23,5 +23,5 @@ grpc:
 gym:
   kafka:
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
-    auto-register-schemas: true
+    auto-register-schemas: false
 

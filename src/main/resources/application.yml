@@ -20,7 +20,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: ms-gym-member-group-v3
+      group-id: ms-gym-member-v1
       auto-offset-reset: earliest
 
 server:
@@ -71,6 +71,6 @@ gym:
       multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
       max-interval: ${KAFKA_RETRY_MAX_INTERVAL:PT8S}
     topics:
-      user-registered: ${TOPIC_USER_REGISTERED:identity.user.registered}
-      payment-completed: ${TOPIC_PAYMENT_COMPLETED:payment.completed}
-      user-suspended: ${TOPIC_USER_SUSPENDED:identity.user.suspended}
+      user-registered: ${TOPIC_USER_REGISTERED:identity.user.registered.v1}
+      payment-completed: ${TOPIC_PAYMENT_COMPLETED:payment.completed.v1}
+      user-suspended: ${TOPIC_USER_SUSPENDED:identity.user.suspended.v1}

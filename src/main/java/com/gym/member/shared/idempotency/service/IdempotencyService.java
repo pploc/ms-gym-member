@@ -30,6 +30,11 @@ public class IdempotencyService {
         return inserted > 0;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void releaseClaim(String eventId) {
+        processedEventRepository.deleteById(eventId);
+    }
+
     @Transactional
     public void markEventProcessed(String eventId, String eventType) {
         processedEventRepository.save(new ProcessedEventEntity(eventId, eventType, Instant.now(clock)));

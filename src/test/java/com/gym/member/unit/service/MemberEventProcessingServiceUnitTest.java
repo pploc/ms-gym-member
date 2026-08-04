@@ -64,7 +64,7 @@ class MemberEventProcessingServiceUnitTest {
     }
 
     @Test
-    void givenBlankUserId_whenProcessUserRegistered_thenThrowsIllegalArgumentException() {
+    void givenBlankUserId_whenProcessUserRegistered_thenThrowsIllegalArgumentExceptionAndReleasesClaim() {
         when(idempotencyService.claimEvent(eventId, "user.registered")).thenReturn(true);
 
         UserRegisteredEvent event = UserRegisteredEvent.newBuilder()
@@ -74,6 +74,7 @@ class MemberEventProcessingServiceUnitTest {
                 .build();
 
         assertThrows(IllegalArgumentException.class, () -> service.processUserRegistered(eventId, "user.registered", event));
+        verify(idempotencyService, times(1)).releaseClaim(eventId);
     }
 
     @Test

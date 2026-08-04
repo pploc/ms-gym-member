@@ -29,16 +29,26 @@ if (gprKey == null || gprKey.isEmpty()) {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven { url 'https://packages.confluent.io/maven/' }
-    ['gym-proto', 'common-java'].each { repo ->
-        maven {
-            url = uri("https://maven.pkg.github.com/pploc/${repo}")
-            credentials {
-                username = gprUser
-                password = gprKey
-            }
+    maven {
+        url = uri("https://maven.pkg.github.com/pploc/gym-proto")
+        credentials {
+            username = gprUser
+            password = gprKey
+        }
+        content {
+            includeGroup 'com.gym.proto'
+        }
+    }
+    maven {
+        url = uri("https://maven.pkg.github.com/pploc/common-java")
+        credentials {
+            username = gprUser
+            password = gprKey
+        }
+        content {
+            includeGroup 'com.gym'
         }
     }
 }
@@ -48,8 +58,8 @@ def grpcVersion = '1.68.1'
 def testcontainersVersion = '1.20.1'
 
 dependencies {
-    implementation 'com.gym:common-java:1.0.6'
-    implementation 'com.gym.proto:gym-proto-java:1.0.6'
+    implementation 'com.gym:common-java:2.0.0-rc.6'
+    implementation 'com.gym.proto:gym-proto-java:1.1.0'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

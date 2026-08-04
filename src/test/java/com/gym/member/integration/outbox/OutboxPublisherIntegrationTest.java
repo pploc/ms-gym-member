@@ -1,5 +1,6 @@
 package com.gym.member.integration.outbox;
 
+import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
 import com.gym.member.shared.outbox.entity.OutboxEventEntity;
 import com.gym.member.shared.outbox.repository.OutboxEventJpaRepository;
@@ -13,7 +14,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 class OutboxPublisherIntegrationTest {
 
     @Autowired
@@ -35,7 +34,7 @@ class OutboxPublisherIntegrationTest {
     private OutboxEventJpaRepository outboxRepository;
 
     @MockitoBean
-    private KafkaTemplate<String, Object> kafkaTemplate;
+    private KafkaTemplate<String, Message> kafkaTemplate;
 
     private UUID eventId;
 
@@ -60,7 +59,7 @@ class OutboxPublisherIntegrationTest {
         event.setAggregateId(UUID.randomUUID().toString());
         event.setEventType("MembershipActivatedEvent");
         event.setPayloadType(proto.getDescriptorForType().getFullName());
-        event.setTopic("membership.activated");
+        event.setTopic("membership.activated.v1");
         event.setPayload(payloadJson);
         event.setStatus(OutboxEventEntity.OutboxStatus.PENDING);
         event.setCreatedAt(Instant.now());
