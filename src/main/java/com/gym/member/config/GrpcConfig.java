@@ -2,9 +2,11 @@ package com.gym.member.config;
 
 import com.gym.common.grpc.interceptor.AuthServerInterceptor;
 import com.gym.common.grpc.interceptor.ExceptionInterceptor;
+import com.gym.common.grpc.interceptor.GrpcMethodRegistry;
 import com.gym.common.grpc.interceptor.LoggingInterceptor;
 import com.gym.common.grpc.interceptor.MetricsInterceptor;
 import com.gym.common.grpc.interceptor.TracingInterceptor;
+import com.gym.common.grpc.security.WorkloadIdentityVerifier;
 import com.gym.member.member.adapter.in.grpc.MemberGrpcHandler;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -14,11 +16,14 @@ import io.grpc.protobuf.services.ProtoReflectionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 
+import javax.net.ssl.SSLSession;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Configuration
@@ -32,9 +37,46 @@ public class GrpcConfig {
 
     private Server server;
 
+    @Bean
+    public WorkloadIdentityVerifier workloadIdentityVerifier() {
+        Set<String> allowedWorkloads = Set.of("ms-gym-identifier", "spiffe://gym.cluster.local/ns/default/sa/ms-gym-identifier");
+        return call -> {
+            SSLSession sslSession = call.getAttributes().get(io.grpc.Grpc.TRANSPORT_ATTR_SSL_SESSION);
+            if (sslSession == null) {
+                return false;
+            }
+            try {
+                java.security.cert.Certificate[] certs = sslSession.getPeerCertificates();
+                if (certs.length == 0 || !(certs[0] instanceof java.security.cert.X509Certificate x509)) {
+                    return false;
+                }
+                var sanList = x509.getSubjectAlternativeNames();
+                if (sanList == null) {
+                    return false;
+                }
+                for (List<?> san : sanList) {
+                    if (san.size() >= 2 && san.get(1) instanceof String sanValue) {
+                        if (allowedWorkloads.contains(sanValue)) {
+                            return true;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to verify mTLS workload identity", e);
+            }
+            return false;
+        };
+    }
+
+    @Bean
+    @org.springframework.context.annotation.Primary
+    public AuthServerInterceptor authServerInterceptor(GrpcMethodRegistry methodRegistry, WorkloadIdentityVerifier workloadIdentityVerifier) {
+        return new AuthServerInterceptor(methodRegistry, workloadIdentityVerifier);
+    }
+
     public GrpcConfig(
             MemberGrpcHandler memberGrpcHandler,
-            AuthServerInterceptor authServerInterceptor,
+            @org.springframework.context.annotation.Lazy AuthServerInterceptor authServerInterceptor,
             ExceptionInterceptor exceptionInterceptor,
             LoggingInterceptor loggingInterceptor,
             TracingInterceptor tracingInterceptor,

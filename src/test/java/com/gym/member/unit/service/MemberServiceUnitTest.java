@@ -2,7 +2,6 @@ package com.gym.member.unit.service;
 
 import com.gym.common.error.NotFoundException;
 import com.gym.common.pagination.NormalPage;
-import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
@@ -63,7 +62,6 @@ class MemberServiceUnitTest {
         member = new MemberEntity();
         member.setId(memberId);
         member.setUserId(userId);
-        member.setGymId(gymId);
         member.setFullName("John Doe");
         member.setStatus(MembershipStatus.ACTIVE);
         member.setCreatedAt(Instant.now());
@@ -118,13 +116,10 @@ class MemberServiceUnitTest {
     @Test
     void givenExistingMemberShell_whenCreateMemberShell_thenReturnsExistingMemberWithoutSaving() {
         // Given
-        GymLocationEntity location = new GymLocationEntity();
-        location.setId(gymId);
-        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
 
         // When
-        MemberDto dto = memberService.createMemberShell(userId, "John Doe", gymId);
+        MemberDto dto = memberService.createMemberShell(userId, "John Doe");
 
         // Then
         assertNotNull(dto);
@@ -132,11 +127,8 @@ class MemberServiceUnitTest {
     }
 
     @Test
-    void givenNewUserAndValidGymId_whenCreateMemberShell_thenSavesAndReturnsNewMemberDto() {
+    void givenNewUser_whenCreateMemberShell_thenSavesAndReturnsNewMemberDto() {
         // Given
-        GymLocationEntity location = new GymLocationEntity();
-        location.setId(gymId);
-        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.of(location));
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(memberRepository.save(any())).thenAnswer(inv -> {
             MemberEntity entity = inv.getArgument(0);
@@ -147,37 +139,18 @@ class MemberServiceUnitTest {
         });
 
         // When
-        MemberDto dto = memberService.createMemberShell(userId, "John Doe", gymId);
+        MemberDto dto = memberService.createMemberShell(userId, "John Doe");
 
         // Then
         assertNotNull(dto);
         assertEquals("John Doe", dto.fullName());
-        assertEquals(gymId, dto.gymId().toString());
     }
 
     @Test
     void givenNullOrBlankFullName_whenCreateMemberShell_thenThrowsIllegalArgumentException() {
         // When & Then
-        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, null, gymId));
-        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "   ", gymId));
-    }
-
-    @Test
-    void givenNullOrBlankGymId_whenCreateMemberShell_thenThrowsIllegalArgumentException() {
-        // Given - null and blank gymId
-
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "John Doe", null));
-        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "John Doe", "   "));
-    }
-
-    @Test
-    void givenInvalidGymId_whenCreateMemberShell_thenThrowsNotFoundException() {
-        // Given
-        when(gymLocationRepository.findById(gymId)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThrows(NotFoundException.class, () -> memberService.createMemberShell(userId, "John Doe", gymId));
+        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, null));
+        assertThrows(IllegalArgumentException.class, () -> memberService.createMemberShell(userId, "   "));
     }
 
     @Test
@@ -222,10 +195,10 @@ class MemberServiceUnitTest {
     }
 
     @Test
-    void givenGymIdFilter_whenListMembers_thenReturnsPagedMembersForGym() {
+    void givenGymIdFilter_whenListMembers_thenReturnsPagedMembers() {
         // Given
         Page<MemberEntity> page = new PageImpl<>(List.of(member));
-        when(memberRepository.findByGymId(eq(gymId), any(PageRequest.class))).thenReturn(page);
+        when(memberRepository.findAll(any(PageRequest.class))).thenReturn(page);
 
         // When
         NormalPage<MemberDto> result = memberService.listMembers(gymId, 0, 10);
@@ -266,7 +239,7 @@ class MemberServiceUnitTest {
     @Test
     void givenStatusAndGymIds_whenListMembersByStatus_thenReturnsFilteredMembers() {
         // Given
-        when(memberRepository.findByStatusAndGymIdIn(eq(MembershipStatus.ACTIVE), eq(List.of(gymId)), any())).thenReturn(List.of(member));
+        when(memberRepository.findByStatus(eq(MembershipStatus.ACTIVE), any())).thenReturn(List.of(member));
 
         // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of(gymId));

@@ -22,7 +22,7 @@ class GrpcAccessPolicyUnitTest {
         UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1");
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
         ctx.run(() -> {
-            MemberDto member = new MemberDto(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Name", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
+            MemberDto member = new MemberDto(UUID.randomUUID(), UUID.randomUUID(), "Name", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
             assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireSelf(member));
         });
     }

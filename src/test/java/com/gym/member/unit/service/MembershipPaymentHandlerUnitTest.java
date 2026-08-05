@@ -58,7 +58,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setType("MEMBERSHIP")
                 .build();
 
-        MemberDto member = new MemberDto(memberId, UUID.fromString(userId), UUID.randomUUID(), "Test Member", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
+        MemberDto member = new MemberDto(memberId, UUID.fromString(userId), "Test Member", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
         when(memberUseCase.getMemberByUserId(userId)).thenReturn(member);
 
         handler.handle(event, "fallback-key");
@@ -74,7 +74,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setType("MEMBERSHIP")
                 .build();
 
-        MemberDto member = new MemberDto(memberId, UUID.fromString(userId), UUID.randomUUID(), "Test Member", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
+        MemberDto member = new MemberDto(memberId, UUID.fromString(userId), "Test Member", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
         when(memberUseCase.getMemberByUserId(userId)).thenReturn(member);
 
         handler.handle(event, userId);

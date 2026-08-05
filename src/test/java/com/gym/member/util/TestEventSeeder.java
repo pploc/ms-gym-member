@@ -37,7 +37,6 @@ public class TestEventSeeder {
                     .setUserId(testUserId)
                     .setFullName("John Doe (Test Member)")
                     .setEmail("johndoe@example.com")
-                    .setGymId(testGymId)
                     .setRole("MEMBER")
                     .setAuthProvider("LOCAL")
                     .setTimestamp(Instant.now().toEpochMilli())

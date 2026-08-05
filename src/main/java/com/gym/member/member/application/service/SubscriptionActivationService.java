@@ -14,7 +14,6 @@ import com.gym.member.config.MemberProperties;
 import com.gym.member.member.domain.constant.MemberEventTopics;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.member.member.domain.exception.InactivePlanException;
-import com.gym.member.member.domain.exception.PlanGymMismatchException;
 import com.gym.member.member.domain.exception.PlanSwitchNotAllowedException;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.domain.model.PlanType;
@@ -58,14 +57,12 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
         if (!plan.isActive()) {
             throw new InactivePlanException("Membership plan is inactive: " + planId);
         }
-        if (!member.getGymId().equals(plan.getGymId())) {
-            throw new PlanGymMismatchException("Membership plan does not belong to the member's gym");
-        }
 
         LocalDate today = LocalDate.now(clock);
 
         Optional<SubscriptionEntity> currentSubOpt = subscriptionRepository.findCurrentForUpdate(
                 memberId,
+                plan.getGymId(),
                 List.of(MembershipStatus.ACTIVE, MembershipStatus.PAUSED)
         );
 
@@ -92,6 +89,7 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
             int defaultDays = memberProperties.subscription().defaultDurationDays();
             sub = new SubscriptionEntity();
             sub.setMemberId(memberId);
+            sub.setGymId(plan.getGymId());
             sub.setPlanId(planId);
             sub.setStatus(MembershipStatus.ACTIVE);
             sub.setStartDate(today);

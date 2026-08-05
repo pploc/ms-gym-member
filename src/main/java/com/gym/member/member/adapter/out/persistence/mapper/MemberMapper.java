@@ -15,12 +15,10 @@ public interface MemberMapper {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "toUuid")
     @Mapping(target = "userId", source = "userId", qualifiedByName = "toUuid")
-    @Mapping(target = "gymId", source = "gymId", qualifiedByName = "toUuid")
     MemberDto toDto(MemberEntity entity);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "uuidToString")
     @Mapping(target = "userId", source = "userId", qualifiedByName = "uuidToString")
-    @Mapping(target = "gymId", source = "gymId", qualifiedByName = "uuidToString")
     @Mapping(target = "phone", source = "phone", defaultValue = "")
     @Mapping(target = "avatarUrl", source = "avatarUrl", defaultValue = "")
     @Mapping(target = "dateOfBirth", source = "dateOfBirth", qualifiedByName = "dateToString")

@@ -15,6 +15,7 @@ public interface SubscriptionMapper {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "toUuid")
     @Mapping(target = "memberId", source = "memberId", qualifiedByName = "toUuid")
+    @Mapping(target = "gymId", source = "gymId", qualifiedByName = "toUuid")
     @Mapping(target = "planId", source = "planId", qualifiedByName = "toUuid")
     SubscriptionDto toDto(SubscriptionEntity entity);
 

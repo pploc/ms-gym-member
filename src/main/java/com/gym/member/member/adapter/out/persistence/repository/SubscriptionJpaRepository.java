@@ -15,12 +15,14 @@ import java.util.Optional;
 
 @Repository
 public interface SubscriptionJpaRepository extends JpaRepository<SubscriptionEntity, String>, JpaSpecificationExecutor<SubscriptionEntity> {
+    Optional<SubscriptionEntity> findByMemberIdAndGymIdAndStatus(String memberId, String gymId, MembershipStatus status);
     Optional<SubscriptionEntity> findByMemberIdAndStatus(String memberId, MembershipStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from SubscriptionEntity s where s.memberId = :memberId and s.status in :statuses")
+    @Query("select s from SubscriptionEntity s where s.memberId = :memberId and s.gymId = :gymId and s.status in :statuses")
     Optional<SubscriptionEntity> findCurrentForUpdate(
             @Param("memberId") String memberId,
+            @Param("gymId") String gymId,
             @Param("statuses") Collection<MembershipStatus> statuses
     );
 }

@@ -17,7 +17,6 @@ import com.gym.member.config.MemberProperties;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.member.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.member.domain.exception.MaxPausesExceededException;
-import com.gym.member.member.domain.exception.PlanGymMismatchException;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.domain.model.PlanType;
 import com.gym.member.member.adapter.out.persistence.mapper.SubscriptionMapper;
@@ -95,7 +94,6 @@ class SubscriptionServiceUnitTest {
         member.setId(memberId);
         member.setUserId(userId);
         member.setStatus(MembershipStatus.NONE);
-        member.setGymId(gymId);
 
         plan = new MembershipPlanEntity();
         plan.setId(planId);
@@ -107,6 +105,7 @@ class SubscriptionServiceUnitTest {
         activeSub = new SubscriptionEntity();
         activeSub.setId(UUID.randomUUID().toString());
         activeSub.setMemberId(memberId);
+        activeSub.setGymId(gymId);
         activeSub.setPlanId(planId);
         activeSub.setStatus(MembershipStatus.ACTIVE);
         activeSub.setStartDate(LocalDate.now(clock));
@@ -131,7 +130,7 @@ class SubscriptionServiceUnitTest {
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
-        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), any())).thenReturn(Optional.empty());
+        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), eq(gymId), any())).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any())).thenAnswer(inv -> {
             SubscriptionEntity entity = inv.getArgument(0);
             entity.setId(UUID.randomUUID().toString());
@@ -148,29 +147,11 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
-    void givenCrossGymPlan_whenActivateOrRenewSubscription_thenThrowsPlanGymMismatchException() {
-        // Given
-        MembershipPlanEntity otherGymPlan = new MembershipPlanEntity();
-        otherGymPlan.setId(planId);
-        otherGymPlan.setGymId(UUID.randomUUID().toString()); // Different Gym ID
-        otherGymPlan.setActive(true);
-
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(planRepository.findById(planId)).thenReturn(Optional.of(otherGymPlan));
-
-        // When & Then
-        PlanGymMismatchException ex = assertThrows(PlanGymMismatchException.class, () ->
-                activationService.activateOrRenewSubscription(memberId, planId)
-        );
-        assertEquals("Membership plan does not belong to the member's gym", ex.getMessage());
-    }
-
-    @Test
     void givenActiveSubscription_whenActivateOrRenewSubscription_thenExtendsEndDateAndPublishesEvent() {
         // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
-        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), any())).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), eq(gymId), any())).thenReturn(Optional.of(activeSub));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -190,7 +171,7 @@ class SubscriptionServiceUnitTest {
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
-        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), any())).thenReturn(Optional.empty());
+        when(subscriptionRepository.findCurrentForUpdate(eq(memberId), eq(gymId), any())).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
@@ -226,12 +207,12 @@ class SubscriptionServiceUnitTest {
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
-        SubscriptionDto result = lifecycleService.pauseSubscription(memberId);
+        SubscriptionDto result = lifecycleService.pauseSubscription(memberId, gymId);
 
         // Then
         assertNotNull(result);
@@ -246,28 +227,28 @@ class SubscriptionServiceUnitTest {
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(NotFoundException.class, () -> lifecycleService.pauseSubscription(memberId));
+        assertThrows(NotFoundException.class, () -> lifecycleService.pauseSubscription(memberId, gymId));
     }
 
     @Test
     void givenNoActiveSubscription_whenPauseSubscription_thenThrowsNotFoundException() {
         // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(NotFoundException.class, () -> lifecycleService.pauseSubscription(memberId));
+        assertThrows(NotFoundException.class, () -> lifecycleService.pauseSubscription(memberId, gymId));
     }
 
     @Test
     void givenMissingPlan_whenPauseSubscription_thenThrowsNotFoundException() {
         // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(planRepository.findById(planId)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(NotFoundException.class, () -> lifecycleService.pauseSubscription(memberId));
+        assertThrows(NotFoundException.class, () -> lifecycleService.pauseSubscription(memberId, gymId));
     }
 
     @Test
@@ -275,11 +256,11 @@ class SubscriptionServiceUnitTest {
         // Given
         plan.setPlanType(PlanType.LIFETIME);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
 
         // When & Then
-        assertThrows(CannotPauseLifetimeException.class, () -> lifecycleService.pauseSubscription(memberId));
+        assertThrows(CannotPauseLifetimeException.class, () -> lifecycleService.pauseSubscription(memberId, gymId));
     }
 
     @Test
@@ -289,11 +270,11 @@ class SubscriptionServiceUnitTest {
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
         when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
 
         // When & Then
-        assertThrows(MaxPausesExceededException.class, () -> lifecycleService.pauseSubscription(memberId));
+        assertThrows(MaxPausesExceededException.class, () -> lifecycleService.pauseSubscription(memberId, gymId));
     }
 
     @Test
@@ -302,15 +283,16 @@ class SubscriptionServiceUnitTest {
         SubscriptionEntity pausedSub = new SubscriptionEntity();
         pausedSub.setId(UUID.randomUUID().toString());
         pausedSub.setMemberId(memberId);
+        pausedSub.setGymId(gymId);
         pausedSub.setStatus(MembershipStatus.PAUSED);
         pausedSub.setRemainingDays(15);
 
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.of(pausedSub));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED)).thenReturn(Optional.of(pausedSub));
         when(subscriptionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         // When
-        SubscriptionDto result = lifecycleService.resumeSubscription(memberId);
+        SubscriptionDto result = lifecycleService.resumeSubscription(memberId, gymId);
 
         // Then
         assertNotNull(result);
@@ -324,26 +306,26 @@ class SubscriptionServiceUnitTest {
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(NotFoundException.class, () -> lifecycleService.resumeSubscription(memberId));
+        assertThrows(NotFoundException.class, () -> lifecycleService.resumeSubscription(memberId, gymId));
     }
 
     @Test
     void givenNoPausedSubscription_whenResumeSubscription_thenThrowsNotFoundException() {
         // Given
         when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(NotFoundException.class, () -> lifecycleService.resumeSubscription(memberId));
+        assertThrows(NotFoundException.class, () -> lifecycleService.resumeSubscription(memberId, gymId));
     }
 
     @Test
     void givenActiveSubscription_whenGetActiveSubscription_thenReturnsSubscriptionDto() {
         // Given
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
 
         // When
-        SubscriptionDto result = lifecycleService.getActiveSubscription(memberId);
+        SubscriptionDto result = lifecycleService.getActiveSubscription(memberId, gymId);
 
         // Then
         assertNotNull(result);
@@ -353,11 +335,11 @@ class SubscriptionServiceUnitTest {
     @Test
     void givenNoActiveOrPausedSubscription_whenGetActiveSubscription_thenThrowsNotFoundException() {
         // Given
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(NotFoundException.class, () -> lifecycleService.getActiveSubscription(memberId));
+        assertThrows(NotFoundException.class, () -> lifecycleService.getActiveSubscription(memberId, gymId));
     }
 
     @Test

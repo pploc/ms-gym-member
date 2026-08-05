@@ -88,9 +88,9 @@ class MemberGrpcHandlerUnitTest {
         gymId = UUID.randomUUID();
         chainId = UUID.randomUUID();
 
-        memberDto = new MemberDto(memberId, userId, gymId, "John Doe", "123456", "http://avatar", LocalDate.of(1995, 5, 15), MembershipStatus.ACTIVE, null, null);
+        memberDto = new MemberDto(memberId, userId, "John Doe", "123456", "http://avatar", LocalDate.of(1995, 5, 15), MembershipStatus.ACTIVE, null, null);
 
-        memberGrpcDelegate = new MemberGrpcDelegate(memberService, memberMapper);
+        memberGrpcDelegate = new MemberGrpcDelegate(memberService, subscriptionLifecycleUseCase, memberMapper);
         subscriptionGrpcDelegate = new SubscriptionGrpcDelegate(memberService, subscriptionLifecycleUseCase, paymentGrpcClient, subscriptionMapper);
         gymLocationGrpcDelegate = new GymLocationGrpcDelegate(gymLocationService, gymLocationMapper);
         memberGrpcHandler = new MemberGrpcHandler(memberGrpcDelegate, subscriptionGrpcDelegate, gymLocationGrpcDelegate);
@@ -259,9 +259,9 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMemberId_whenPauseMembership_thenReturnsMembershipResponse() {
         PauseMembershipRequest request = PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
-        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.PAUSED, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
+        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.PAUSED, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.pauseSubscription(memberId.toString())).thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.pauseSubscription(memberId.toString(), gymId.toString())).thenReturn(subDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.pauseMembership(request, responseObserver);
@@ -275,7 +275,7 @@ class MemberGrpcHandlerUnitTest {
     void givenErrorOnPauseMembership_whenPauseMembership_thenCallsOnError() {
         PauseMembershipRequest request = PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.pauseSubscription(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.pauseSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.pauseMembership(request, responseObserver);
@@ -287,9 +287,9 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMemberId_whenResumeMembership_thenReturnsMembershipResponse() {
         ResumeMembershipRequest request = ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
-        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
+        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.resumeSubscription(memberId.toString())).thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.resumeSubscription(memberId.toString(), gymId.toString())).thenReturn(subDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.resumeMembership(request, responseObserver);
@@ -303,7 +303,7 @@ class MemberGrpcHandlerUnitTest {
     void givenErrorOnResumeMembership_whenResumeMembership_thenCallsOnError() {
         ResumeMembershipRequest request = ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.resumeSubscription(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.resumeSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.resumeMembership(request, responseObserver);
@@ -315,9 +315,9 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMemberId_whenGetMembershipStatus_thenReturnsMembershipResponse() {
         GetMembershipStatusRequest request = GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
-        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
+        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.getActiveSubscription(memberId.toString())).thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.getActiveSubscription(memberId.toString(), gymId.toString())).thenReturn(subDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.getMembershipStatus(request, responseObserver);
@@ -331,7 +331,7 @@ class MemberGrpcHandlerUnitTest {
     void givenErrorOnGetMembershipStatus_whenGetMembershipStatus_thenCallsOnError() {
         GetMembershipStatusRequest request = GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.getActiveSubscription(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.getActiveSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () -> {
             memberGrpcHandler.getMembershipStatus(request, responseObserver);
@@ -450,7 +450,9 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMember_whenValidateMembership_thenReturnsValidateMembershipResponse() {
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder().setMemberId(memberId.toString()).setGymId(gymId.toString()).build();
+        SubscriptionDto subDto = new SubscriptionDto(UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.ACTIVE, LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
+        when(subscriptionLifecycleUseCase.getActiveSubscription(memberId.toString(), gymId.toString())).thenReturn(subDto);
 
         runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () -> {
             memberGrpcHandler.validateMembership(request, responseObserver);

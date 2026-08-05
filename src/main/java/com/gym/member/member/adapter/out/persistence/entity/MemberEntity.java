@@ -21,9 +21,6 @@ public class MemberEntity extends BaseEntity {
     @Column(name = "user_id", nullable = false, unique = true)
     private String userId;
 
-    @Column(name = "gym_id", nullable = false)
-    private String gymId;
-
     @Column(name = "full_name", nullable = false)
     private String fullName;
 

@@ -20,6 +20,9 @@ public class SubscriptionEntity extends BaseEntity {
     @Column(name = "member_id", nullable = false)
     private String memberId;
 
+    @Column(name = "gym_id", nullable = false)
+    private String gymId;
+
     @Column(name = "plan_id", nullable = false)
     private String planId;
 

@@ -8,7 +8,6 @@ import java.util.UUID;
 public record MemberDto(
         UUID id,
         UUID userId,
-        UUID gymId,
         String fullName,
         String phone,
         String avatarUrl,

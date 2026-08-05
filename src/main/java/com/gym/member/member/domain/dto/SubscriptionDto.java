@@ -7,6 +7,7 @@ import java.util.UUID;
 public record SubscriptionDto(
         UUID id,
         UUID memberId,
+        UUID gymId,
         UUID planId,
         MembershipStatus status,
         LocalDate startDate,

@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -43,12 +44,12 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
     private final Clock clock;
 
     @Transactional
-    public SubscriptionDto pauseSubscription(String memberId) {
+    public SubscriptionDto pauseSubscription(String memberId, String gymId) {
         MemberEntity member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found: " + memberId));
 
-        SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)
-                .orElseThrow(() -> new NotFoundException("Active subscription not found for member: " + memberId));
+        SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)
+                .orElseThrow(() -> new NotFoundException("Active subscription not found for member: " + memberId + " at gym: " + gymId));
 
         MembershipPlanEntity plan = planRepository.findById(sub.getPlanId())
                 .orElseThrow(() -> new NotFoundException("Plan not found: " + sub.getPlanId()));
@@ -73,22 +74,19 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
 
         SubscriptionEntity savedSub = subscriptionRepository.save(sub);
 
-        member.setStatus(MembershipStatus.PAUSED);
-        memberRepository.save(member);
-
-        MembershipPausedEvent event = eventFactory.createPausedEvent(member, remainingDays, today);
+        MembershipPausedEvent event = eventFactory.createPausedEvent(member, savedSub, remainingDays, today);
         outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_PAUSED, event);
 
         return subscriptionMapper.toDto(savedSub);
     }
 
     @Transactional
-    public SubscriptionDto resumeSubscription(String memberId) {
+    public SubscriptionDto resumeSubscription(String memberId, String gymId) {
         MemberEntity member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found: " + memberId));
 
-        SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED)
-                .orElseThrow(() -> new NotFoundException("Paused subscription not found for member: " + memberId));
+        SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED)
+                .orElseThrow(() -> new NotFoundException("Paused subscription not found for member: " + memberId + " at gym: " + gymId));
 
         LocalDate today = LocalDate.now(clock);
         int remainingDays = sub.getRemainingDays() != null ? sub.getRemainingDays() : 0;
@@ -101,20 +99,44 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
 
         SubscriptionEntity savedSub = subscriptionRepository.save(sub);
 
-        member.setStatus(MembershipStatus.ACTIVE);
-        memberRepository.save(member);
-
-        MembershipResumedEvent event = eventFactory.createResumedEvent(member, newEndDate);
+        MembershipResumedEvent event = eventFactory.createResumedEvent(member, savedSub, newEndDate);
         outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_RESUMED, event);
 
         return subscriptionMapper.toDto(savedSub);
     }
 
     @Transactional(readOnly = true)
-    public SubscriptionDto getActiveSubscription(String memberId) {
-        SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)
-                .or(() -> subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.PAUSED))
-                .orElseThrow(() -> new NotFoundException("No active or paused subscription found for member: " + memberId));
+    public SubscriptionDto getActiveSubscription(String memberId, String gymId) {
+        SubscriptionEntity sub = subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE)
+                .or(() -> subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED))
+                .orElseThrow(() -> new NotFoundException("No active or paused subscription found for member: " + memberId + " at gym: " + gymId));
         return subscriptionMapper.toDto(sub);
+    }
+
+    @Transactional(readOnly = true)
+    public SubscriptionDto getMembershipStatusByUserIdAndGymId(String userId, String gymId) {
+        MemberEntity member = memberRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Member not found for user: " + userId));
+
+        Optional<SubscriptionEntity> subOpt = subscriptionRepository.findByMemberIdAndGymIdAndStatus(member.getId(), gymId, MembershipStatus.ACTIVE)
+                .or(() -> subscriptionRepository.findByMemberIdAndGymIdAndStatus(member.getId(), gymId, MembershipStatus.PAUSED));
+
+        if (subOpt.isPresent()) {
+            return subscriptionMapper.toDto(subOpt.get());
+        }
+
+        // Return NONE subscription dto for the requested gym
+        return new SubscriptionDto(
+                null,
+                java.util.UUID.fromString(member.getId()),
+                java.util.UUID.fromString(gymId),
+                null,
+                MembershipStatus.NONE,
+                null,
+                null,
+                null,
+                0,
+                0
+        );
     }
 }

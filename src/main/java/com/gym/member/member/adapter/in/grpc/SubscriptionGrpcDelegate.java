@@ -20,7 +20,6 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGym;
 import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireSelf;
 import static com.gym.member.adapter.in.grpc.GrpcErrorHandler.execute;
 
@@ -37,9 +36,8 @@ public class SubscriptionGrpcDelegate {
         execute(responseObserver, () -> {
             MemberDto member = memberUseCase.getMemberByUserId(GrpcSecurityContext.getUserId());
             requireSelf(member);
-            requireGym(member.gymId().toString());
             InitiatePaymentResponse payment = paymentGrpcClient.initiatePayment(InitiatePaymentRequest.newBuilder()
-                    .setGymId(member.gymId().toString())
+                    .setGymId(GrpcSecurityContext.getGymId())
                     .setPaymentType("MEMBERSHIP")
                     .setReferenceId(request.getPlanId())
                     .setProvider(request.getProvider())
@@ -55,7 +53,7 @@ public class SubscriptionGrpcDelegate {
     public void pauseMembership(PauseMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireSelf(memberUseCase.getMember(request.getMemberId()));
-            SubscriptionDto dto = subscriptionLifecycleUseCase.pauseSubscription(request.getMemberId());
+            SubscriptionDto dto = subscriptionLifecycleUseCase.pauseSubscription(request.getMemberId(), GrpcSecurityContext.getGymId());
             return subscriptionMapper.toResponse(dto);
         });
     }
@@ -63,7 +61,7 @@ public class SubscriptionGrpcDelegate {
     public void resumeMembership(ResumeMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireSelf(memberUseCase.getMember(request.getMemberId()));
-            SubscriptionDto dto = subscriptionLifecycleUseCase.resumeSubscription(request.getMemberId());
+            SubscriptionDto dto = subscriptionLifecycleUseCase.resumeSubscription(request.getMemberId(), GrpcSecurityContext.getGymId());
             return subscriptionMapper.toResponse(dto);
         });
     }
@@ -71,16 +69,14 @@ public class SubscriptionGrpcDelegate {
     public void getMembershipStatus(GetMembershipStatusRequest request, StreamObserver<MembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireSelf(memberUseCase.getMember(request.getMemberId()));
-            SubscriptionDto dto = subscriptionLifecycleUseCase.getActiveSubscription(request.getMemberId());
+            SubscriptionDto dto = subscriptionLifecycleUseCase.getActiveSubscription(request.getMemberId(), GrpcSecurityContext.getGymId());
             return subscriptionMapper.toResponse(dto);
         });
     }
 
     public void getMembershipStatusByUserId(GetMembershipStatusByUserIdRequest request, StreamObserver<MembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
-            MemberDto member = memberUseCase.getMemberByUserId(request.getUserId());
-            requireSelf(member);
-            SubscriptionDto dto = subscriptionLifecycleUseCase.getActiveSubscription(member.id().toString());
+            SubscriptionDto dto = subscriptionLifecycleUseCase.getMembershipStatusByUserIdAndGymId(request.getUserId(), request.getGymId());
             return subscriptionMapper.toResponse(dto);
         });
     }

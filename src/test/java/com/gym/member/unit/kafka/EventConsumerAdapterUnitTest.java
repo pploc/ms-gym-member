@@ -72,7 +72,6 @@ class EventConsumerAdapterUnitTest {
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
                 .setUserId(userId)
                 .setFullName("John Doe")
-                .setGymId(gymId)
                 .build();
 
         RecordHeaders headers = createCanonicalHeaders(eventId, payload.getDescriptorForType().getFullName(), "user-service");

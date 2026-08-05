@@ -64,7 +64,7 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
                 member.setStatus(MembershipStatus.EXPIRED);
                 memberRepository.save(member);
 
-                MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, clock);
+                MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, sub, clock);
                 outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRED, event);
             }
         }
@@ -130,7 +130,7 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
             subscriptionRepository.save(sub);
             log.info("Cancelled subscription id {} for suspended user: {}", sub.getId(), userId);
 
-            MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, clock);
+            MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, sub, clock);
             outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRED, event);
         }
 

@@ -54,13 +54,12 @@ class MemberEventProcessingServiceUnitTest {
         UserRegisteredEvent event = UserRegisteredEvent.newBuilder()
                 .setUserId("user-123")
                 .setFullName("John Doe")
-                .setGymId("gym-1")
                 .build();
 
         MemberEventProcessingService.EventProcessingResult result = service.processUserRegistered(eventId, "user.registered", event);
 
         assertEquals(MemberEventProcessingService.EventProcessingResult.DUPLICATE, result);
-        verify(memberUseCase, never()).createMemberShell(anyString(), anyString(), anyString());
+        verify(memberUseCase, never()).createMemberShell(anyString(), anyString());
     }
 
     @Test
@@ -70,7 +69,6 @@ class MemberEventProcessingServiceUnitTest {
         UserRegisteredEvent event = UserRegisteredEvent.newBuilder()
                 .setUserId("")
                 .setFullName("John Doe")
-                .setGymId("gym-1")
                 .build();
 
         assertThrows(IllegalArgumentException.class, () -> service.processUserRegistered(eventId, "user.registered", event));

@@ -1,6 +1,8 @@
 package com.gym.member.member.adapter.in.grpc;
 
+import com.gym.common.grpc.security.RequirePolicy;
 import com.gym.common.grpc.security.RequireRole;
+import com.gym.common.grpc.security.RpcPolicyKind;
 import com.gym.member.location.adapter.in.grpc.GymLocationGrpcDelegate;
 
 import com.gym.proto.member.v1.*;
@@ -65,7 +67,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     }
 
     @Override
-    @RequireRole({"CUSTOMER", "ADMIN", "SUPER_ADMIN"})
+    @RequirePolicy(RpcPolicyKind.INTERNAL_WORKLOAD)
     public void getMembershipStatusByUserId(GetMembershipStatusByUserIdRequest request, StreamObserver<MembershipResponse> responseObserver) {
         subscriptionGrpcDelegate.getMembershipStatusByUserId(request, responseObserver);
     }

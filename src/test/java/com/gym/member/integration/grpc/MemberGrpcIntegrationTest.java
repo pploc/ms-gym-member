@@ -47,6 +47,9 @@ class MemberGrpcIntegrationTest {
     @Autowired
     private MemberGrpcHandler memberGrpcHandler;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.gym.common.grpc.security.WorkloadIdentityVerifier workloadIdentityVerifier;
+
     @Autowired
     private AuthServerInterceptor authServerInterceptor;
 
@@ -97,22 +100,23 @@ class MemberGrpcIntegrationTest {
         MemberEntity member = new MemberEntity();
         member.setId(memberId);
         member.setUserId(userId);
-        member.setGymId(gymId);
         member.setFullName("John Real DB");
         member.setPhone("12345678");
         member.setStatus(MembershipStatus.ACTIVE);
         member.setCreatedAt(Instant.now());
         member.setUpdatedAt(Instant.now());
         memberRepository.save(member);
-
         SubscriptionEntity sub = new SubscriptionEntity();
         sub.setId(UUID.randomUUID().toString());
         sub.setMemberId(memberId);
+        sub.setGymId(gymId);
         sub.setPlanId(UUID.randomUUID().toString());
         sub.setStatus(MembershipStatus.ACTIVE);
         sub.setStartDate(java.time.LocalDate.now());
         sub.setEndDate(java.time.LocalDate.now().plusDays(30));
         subscriptionRepository.save(sub);
+
+        org.mockito.Mockito.when(workloadIdentityVerifier.isVerified(org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
         String serverName = InProcessServerBuilder.generateName();
 
@@ -288,13 +292,17 @@ class MemberGrpcIntegrationTest {
     void givenAdminRole_whenGetMembershipStatusByUserId_thenReturnsSuccess() {
         GetMembershipStatusByUserIdRequest request = GetMembershipStatusByUserIdRequest.newBuilder()
                 .setUserId(userId)
+                .setGymId(gymId)
                 .build();
-        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", gymId);
 
-        MembershipResponse response = stub.getMembershipStatusByUserId(request);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getMemberId()).isEqualTo(memberId);
-        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        try {
+            MembershipResponse response = blockingStub.getMembershipStatusByUserId(request);
+            assertThat(response).isNotNull();
+            assertThat(response.getMemberId()).isEqualTo(memberId);
+            assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        } catch (StatusRuntimeException e) {
+            System.err.println("TEST FAILURE STATUS: " + e.getStatus());
+            throw e;
+        }
     }
 }

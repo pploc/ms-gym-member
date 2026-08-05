@@ -2,7 +2,10 @@ package com.gym.member.member.adapter.in.grpc;
 
 import com.gym.common.pagination.NormalPage;
 import com.gym.member.member.application.port.in.MemberUseCase;
+import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
+import com.gym.member.member.domain.dto.SubscriptionDto;
+import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.adapter.out.persistence.mapper.MemberMapper;
 import com.gym.proto.member.v1.GetMemberRequest;
@@ -32,6 +35,7 @@ import static com.gym.member.adapter.in.grpc.GrpcErrorHandler.execute;
 public class MemberGrpcDelegate {
 
     private final MemberUseCase memberUseCase;
+    private final SubscriptionLifecycleUseCase subscriptionLifecycleUseCase;
     private final MemberMapper memberMapper;
 
     public void getMember(GetMemberRequest request, StreamObserver<MemberResponse> responseObserver) {
@@ -78,10 +82,11 @@ public class MemberGrpcDelegate {
         execute(responseObserver, () -> {
             requireServiceGym(request.getGymId());
             MemberDto member = memberUseCase.getMember(request.getMemberId());
-            boolean valid = member.status() == MembershipStatus.ACTIVE && member.gymId().toString().equals(request.getGymId());
+            SubscriptionDto sub = subscriptionLifecycleUseCase.getActiveSubscription(member.id().toString(), request.getGymId());
+            boolean valid = sub.status() == MembershipStatus.ACTIVE;
             return ValidateMembershipResponse.newBuilder()
                     .setValid(valid)
-                    .setStatus(member.status().name())
+                    .setStatus(sub.status().name())
                     .build();
         });
     }

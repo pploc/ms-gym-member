@@ -56,7 +56,7 @@ public class MemberEventProcessingService {
                 throw new IllegalArgumentException("UserRegisteredEvent payload, userId, or fullName cannot be blank");
             }
 
-            memberUseCase.createMemberShell(event.getUserId(), event.getFullName(), event.getGymId());
+            memberUseCase.createMemberShell(event.getUserId(), event.getFullName());
             log.info("Successfully processed user registered event for user: {}", event.getUserId());
             return EventProcessingResult.PROCESSED;
         });

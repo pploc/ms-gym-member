@@ -34,6 +34,7 @@ if (gprKey == null || gprKey.isEmpty()) {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven { url 'https://packages.confluent.io/maven/' }
     maven {
@@ -64,7 +65,7 @@ def testcontainersVersion = '1.20.1'
 
 dependencies {
     implementation 'com.gym:common-java:2.0.0'
-    implementation 'com.gym.proto:gym-proto-java:1.1.0'
+    implementation 'com.gym.proto:gym-proto-java:2.0.0'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

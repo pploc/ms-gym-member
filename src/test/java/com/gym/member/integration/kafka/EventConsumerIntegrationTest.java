@@ -68,7 +68,6 @@ class EventConsumerIntegrationTest {
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
                 .setUserId(userId)
                 .setFullName("Integration User")
-                .setGymId(gymId)
                 .build();
 
         ConsumerRecord<String, UserRegisteredEvent> record = new ConsumerRecord<>(
@@ -88,7 +87,6 @@ class EventConsumerIntegrationTest {
         MemberEntity member = memberRepository.findByUserId(userId).orElse(null);
         assertThat(member).isNotNull();
         assertThat(member.getFullName()).isEqualTo("Integration User");
-        assertThat(member.getGymId()).isEqualTo(gymId);
 
         boolean processed = processedEventRepository.existsById(eventId);
         assertThat(processed).isTrue();
