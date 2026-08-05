@@ -63,7 +63,7 @@ def grpcVersion = '1.68.1'
 def testcontainersVersion = '1.20.1'
 
 dependencies {
-    implementation 'com.gym:common-java:2.0.0-rc.6'
+    implementation 'com.gym:common-java:2.0.0'
     implementation 'com.gym.proto:gym-proto-java:1.1.0'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
