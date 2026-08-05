@@ -47,11 +47,8 @@ class MemberGrpcIntegrationTest {
     @Autowired
     private MemberGrpcHandler memberGrpcHandler;
 
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
-    private com.gym.common.grpc.security.WorkloadIdentityVerifier workloadIdentityVerifier;
-
     @Autowired
-    private AuthServerInterceptor authServerInterceptor;
+    private com.gym.common.grpc.interceptor.GrpcMethodRegistry methodRegistry;
 
     @Autowired
     private ExceptionInterceptor exceptionInterceptor;
@@ -116,15 +113,18 @@ class MemberGrpcIntegrationTest {
         sub.setEndDate(java.time.LocalDate.now().plusDays(30));
         subscriptionRepository.save(sub);
 
-        org.mockito.Mockito.when(workloadIdentityVerifier.isVerified(org.mockito.ArgumentMatchers.any())).thenReturn(true);
-
         String serverName = InProcessServerBuilder.generateName();
+
+        AuthServerInterceptor testAuthInterceptor = new AuthServerInterceptor(
+                methodRegistry,
+                call -> true
+        );
 
         inProcessServer = InProcessServerBuilder.forName(serverName)
                 .directExecutor()
                 .addService(ServerInterceptors.intercept(
                         memberGrpcHandler,
-                        List.of(tracingInterceptor, loggingInterceptor, metricsInterceptor, exceptionInterceptor, authServerInterceptor)
+                        List.of(tracingInterceptor, loggingInterceptor, metricsInterceptor, exceptionInterceptor, testAuthInterceptor)
                 ))
                 .build()
                 .start();

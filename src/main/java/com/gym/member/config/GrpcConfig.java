@@ -2,7 +2,6 @@ package com.gym.member.config;
 
 import com.gym.common.grpc.interceptor.AuthServerInterceptor;
 import com.gym.common.grpc.interceptor.ExceptionInterceptor;
-import com.gym.common.grpc.interceptor.GrpcMethodRegistry;
 import com.gym.common.grpc.interceptor.LoggingInterceptor;
 import com.gym.common.grpc.interceptor.MetricsInterceptor;
 import com.gym.common.grpc.interceptor.TracingInterceptor;
@@ -66,12 +65,6 @@ public class GrpcConfig {
             }
             return false;
         };
-    }
-
-    @Bean
-    @org.springframework.context.annotation.Primary
-    public AuthServerInterceptor authServerInterceptor(GrpcMethodRegistry methodRegistry, WorkloadIdentityVerifier workloadIdentityVerifier) {
-        return new AuthServerInterceptor(methodRegistry, workloadIdentityVerifier);
     }
 
     public GrpcConfig(
