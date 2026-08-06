@@ -91,7 +91,7 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     }
 
     @Override
-    @RequireRole({"ADMIN", "SUPER_ADMIN", "CHECKIN_SERVICE"})
+    @RequireRole({"CUSTOMER", "TRAINER", "ADMIN", "SUPER_ADMIN"})
     public void getGymLocation(GetGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         gymLocationGrpcDelegate.getGymLocation(request, responseObserver);
     }

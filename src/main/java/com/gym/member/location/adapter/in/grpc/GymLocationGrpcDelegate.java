@@ -77,7 +77,6 @@ public class GymLocationGrpcDelegate {
 
     public void getGymLocation(GetGymLocationRequest request, StreamObserver<GymLocationResponse> responseObserver) {
         execute(responseObserver, () -> {
-            requireGym(request.getId());
             GymLocationDto dto = gymLocationUseCase.getGymLocation(request.getId());
             return gymLocationMapper.toResponse(dto);
         });

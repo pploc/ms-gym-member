@@ -32,7 +32,7 @@ public class TestEventSeeder {
             String testUserId = "11111111-1111-1111-1111-111111111111";
             String testGymId = "22222222-2222-2222-2222-222222222222";
 
-            // 1. Seed UserRegisteredEvent -> identity.user.registered
+            // 1. Seed UserRegisteredEvent -> identity.user.registered.v1
             UserRegisteredEvent registeredEvent = UserRegisteredEvent.newBuilder()
                     .setUserId(testUserId)
                     .setFullName("John Doe (Test Member)")
@@ -43,15 +43,15 @@ public class TestEventSeeder {
                     .build();
 
             String regEventId = UUID.randomUUID().toString();
-            ProducerRecord<String, Message> regRecord = new ProducerRecord<>("identity.user.registered", testUserId, registeredEvent);
+            ProducerRecord<String, Message> regRecord = new ProducerRecord<>("identity.user.registered.v1", testUserId, registeredEvent);
             addCanonicalHeaders(regRecord, regEventId, registeredEvent.getDescriptorForType().getFullName(), "ms-gym-identifier");
 
             producer.send(regRecord).get();
-            System.out.println("Published identity.user.registered event for user_id: " + testUserId);
+            System.out.println("Published identity.user.registered.v1 event for user_id: " + testUserId);
 
             String testPlanId = "44444444-4444-4444-4444-444444444444";
 
-            // 2. Seed PaymentCompletedEvent -> payment.completed
+            // 2. Seed PaymentCompletedEvent -> payment.completed.v1
             PaymentCompletedEvent paymentEvent = PaymentCompletedEvent.newBuilder()
                     .setPaymentId(UUID.randomUUID().toString())
                     .setUserId(testUserId)
@@ -64,11 +64,11 @@ public class TestEventSeeder {
                     .build();
 
             String payEventId = UUID.randomUUID().toString();
-            ProducerRecord<String, Message> payRecord = new ProducerRecord<>("payment.completed", testUserId, paymentEvent);
+            ProducerRecord<String, Message> payRecord = new ProducerRecord<>("payment.completed.v1", testUserId, paymentEvent);
             addCanonicalHeaders(payRecord, payEventId, paymentEvent.getDescriptorForType().getFullName(), "ms-gym-payment");
 
             producer.send(payRecord).get();
-            System.out.println("Published payment.completed event for user_id: " + testUserId);
+            System.out.println("Published payment.completed.v1 event for user_id: " + testUserId);
 
             System.out.println("Test event seeding complete!");
         } catch (Exception e) {

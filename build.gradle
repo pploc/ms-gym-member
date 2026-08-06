@@ -65,6 +65,15 @@ def testcontainersVersion = '1.20.1'
 dependencies {
     implementation 'com.gym:common-java:2.0.0'
     implementation 'com.gym.proto:gym-proto-java:2.0.0'
+    implementation('com.google.protobuf:protobuf-java') {
+        version { strictly '3.25.4' }
+    }
+    implementation('com.google.protobuf:protobuf-java-util') {
+        version { strictly '3.25.4' }
+    }
+    implementation('com.google.api.grpc:proto-google-common-protos') {
+        version { strictly '2.22.1' }
+    }
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -75,7 +84,7 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.springframework.retry:spring-retry:2.0.6'
 
-    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 

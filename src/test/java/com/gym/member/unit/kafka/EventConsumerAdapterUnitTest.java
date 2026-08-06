@@ -1,5 +1,13 @@
 package com.gym.member.unit.kafka;
 
+import com.google.protobuf.Message;
+import com.gym.common.kafka.consumer.DecodedKafkaRecord;
+import com.gym.common.kafka.consumer.DeliverySleeper;
+import com.gym.common.kafka.consumer.PermanentKafkaException;
+import com.gym.common.kafka.consumer.RawDeliveryCoordinatorFactory;
+import com.gym.common.kafka.consumer.RawDlqPublisher;
+import com.gym.common.kafka.consumer.RawKafkaDecoder;
+import com.gym.common.kafka.consumer.RawKafkaRecord;
 import com.gym.member.config.MemberProperties;
 import com.gym.member.member.application.service.MemberEventProcessingService;
 import com.gym.member.payment.adapter.in.kafka.EventConsumerAdapter;
@@ -9,11 +17,9 @@ import com.gym.proto.events.v1.UserRegisteredEvent;
 import com.gym.proto.events.v1.UserSuspendedEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
-import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.support.Acknowledgment;
@@ -21,9 +27,13 @@ import org.springframework.kafka.support.Acknowledgment;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EventConsumerAdapterUnitTest {
@@ -35,64 +45,42 @@ class EventConsumerAdapterUnitTest {
     private MemberProperties properties;
 
     @Mock
-    private Acknowledgment ack;
+    private Acknowledgment acknowledgment;
 
-    @InjectMocks
-    private EventConsumerAdapter adapter;
+    @Mock
+    private RawDlqPublisher dlqPublisher;
 
     private String eventId;
     private String userId;
-    private String gymId;
 
     @BeforeEach
     void setUp() {
         eventId = UUID.randomUUID().toString();
         userId = UUID.randomUUID().toString();
-        gymId = UUID.randomUUID().toString();
-    }
-
-    private RecordHeaders createCanonicalHeaders(String eventId, String eventType, String source) {
-        RecordHeaders headers = new RecordHeaders();
-        if (eventId != null) {
-            headers.add(new RecordHeader(KafkaEventMetadata.HEADER_EVENT_ID, eventId.getBytes(StandardCharsets.UTF_8)));
-        }
-        if (eventType != null) {
-            headers.add(new RecordHeader(KafkaEventMetadata.HEADER_EVENT_TYPE, eventType.getBytes(StandardCharsets.UTF_8)));
-        }
-        if (source != null) {
-            headers.add(new RecordHeader(KafkaEventMetadata.HEADER_SOURCE, source.getBytes(StandardCharsets.UTF_8)));
-        }
-        headers.add(new RecordHeader(KafkaEventMetadata.HEADER_TIMESTAMP, String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8)));
-        return headers;
     }
 
     @Test
-    void givenUserRegisteredEvent_whenHandleUserRegistered_thenInvokesProcessingServiceAndAcknowledges() {
+    void givenRawUserRegisteredEvent_whenConsume_thenDecodesProcessesAndAcknowledges() {
         // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
                 .setUserId(userId)
                 .setFullName("John Doe")
                 .build();
-
-        RecordHeaders headers = createCanonicalHeaders(eventId, payload.getDescriptorForType().getFullName(), "user-service");
-        ConsumerRecord<String, UserRegisteredEvent> record = new ConsumerRecord<>(
-                "identity.user.registered", 0, 0L, userId, payload
-        );
-        headers.forEach(h -> record.headers().add(h));
-
-        when(eventProcessingService.processUserRegistered(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload)))
-                .thenReturn(MemberEventProcessingService.EventProcessingResult.PROCESSED);
+        EventConsumerAdapter adapter = adapterDecoding(payload);
+        ConsumerRecord<byte[], byte[]> record = rawRecord("identity.user.registered.v1", payload, eventId, userId);
 
         // When
-        adapter.handleUserRegistered(record, ack);
+        adapter.consume(record, acknowledgment);
 
         // Then
-        verify(eventProcessingService, times(1)).processUserRegistered(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload));
-        verify(ack, times(1)).acknowledge();
+        verify(eventProcessingService).processUserRegistered(
+                eventId, payload.getDescriptorForType().getFullName(), payload
+        );
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
-    void givenPaymentCompletedEvent_whenHandlePaymentCompleted_thenInvokesProcessingServiceAndAcknowledges() {
+    void givenRawPaymentCompletedEvent_whenConsume_thenDecodesProcessesAndAcknowledges() {
         // Given
         PaymentCompletedEvent payload = PaymentCompletedEvent.newBuilder()
                 .setPaymentId(UUID.randomUUID().toString())
@@ -100,100 +88,112 @@ class EventConsumerAdapterUnitTest {
                 .setType("MEMBERSHIP")
                 .setReferenceId(UUID.randomUUID().toString())
                 .build();
-
-        RecordHeaders headers = createCanonicalHeaders(eventId, payload.getDescriptorForType().getFullName(), "payment-service");
-        ConsumerRecord<String, PaymentCompletedEvent> record = new ConsumerRecord<>(
-                "payment.completed", 0, 0L, userId, payload
-        );
-        headers.forEach(h -> record.headers().add(h));
-
-        when(eventProcessingService.processPaymentCompleted(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload), eq(userId)))
-                .thenReturn(MemberEventProcessingService.EventProcessingResult.PROCESSED);
+        EventConsumerAdapter adapter = adapterDecoding(payload);
+        ConsumerRecord<byte[], byte[]> record = rawRecord("payment.completed.v1", payload, eventId, userId);
 
         // When
-        adapter.handlePaymentCompleted(record, ack);
+        adapter.consume(record, acknowledgment);
 
         // Then
-        verify(eventProcessingService, times(1)).processPaymentCompleted(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload), eq(userId));
-        verify(ack, times(1)).acknowledge();
+        verify(eventProcessingService).processPaymentCompleted(
+                eventId, payload.getDescriptorForType().getFullName(), payload, userId
+        );
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
-    void givenUserSuspendedEvent_whenHandleUserSuspended_thenInvokesProcessingServiceAndAcknowledges() {
+    void givenRawUserSuspendedEvent_whenConsume_thenDecodesProcessesAndAcknowledges() {
         // Given
-        UserSuspendedEvent payload = UserSuspendedEvent.newBuilder()
-                .setUserId(userId)
-                .build();
-
-        RecordHeaders headers = createCanonicalHeaders(eventId, payload.getDescriptorForType().getFullName(), "user-service");
-        ConsumerRecord<String, UserSuspendedEvent> record = new ConsumerRecord<>(
-                "identity.user.suspended", 0, 0L, userId, payload
-        );
-        headers.forEach(h -> record.headers().add(h));
-
-        when(eventProcessingService.processUserSuspended(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload)))
-                .thenReturn(MemberEventProcessingService.EventProcessingResult.PROCESSED);
+        UserSuspendedEvent payload = UserSuspendedEvent.newBuilder().setUserId(userId).build();
+        EventConsumerAdapter adapter = adapterDecoding(payload);
+        ConsumerRecord<byte[], byte[]> record = rawRecord("identity.user.suspended.v1", payload, eventId, userId);
 
         // When
-        adapter.handleUserSuspended(record, ack);
+        adapter.consume(record, acknowledgment);
 
         // Then
-        verify(eventProcessingService, times(1)).processUserSuspended(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload));
-        verify(ack, times(1)).acknowledge();
+        verify(eventProcessingService).processUserSuspended(
+                eventId, payload.getDescriptorForType().getFullName(), payload
+        );
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
-    void givenMissingEventIdAndStrictRequirement_whenHandleUserRegistered_thenThrowsIllegalArgumentException() {
+    void givenMissingEventIdAndStrictRequirement_whenHandle_thenRejectsWithoutProcessing() throws Exception {
         // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder().setUserId(userId).build();
-        RecordHeaders headers = createCanonicalHeaders(null, payload.getDescriptorForType().getFullName(), "user-service");
-        ConsumerRecord<String, UserRegisteredEvent> record = new ConsumerRecord<>(
-                "identity.user.registered", 0, 0L, userId, payload
-        );
-        headers.forEach(h -> record.headers().add(h));
-
+        EventConsumerAdapter adapter = adapterDecoding(payload);
+        ConsumerRecord<byte[], byte[]> record = rawRecord("identity.user.registered.v1", payload, null, userId);
         when(properties.requireEventId()).thenReturn(true);
 
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> adapter.handleUserRegistered(record, ack));
-        verify(ack, never()).acknowledge();
-    }
-
-    @Test
-    void givenMissingEventIdAndNonStrictRequirement_whenHandleUserRegistered_thenUsesLegacyFallbackId() {
-        // Given
-        UserRegisteredEvent payload = UserRegisteredEvent.newBuilder().setUserId(userId).build();
-        RecordHeaders headers = createCanonicalHeaders(null, payload.getDescriptorForType().getFullName(), "user-service");
-        ConsumerRecord<String, UserRegisteredEvent> record = new ConsumerRecord<>(
-                "identity.user.registered", 0, 10L, userId, payload
-        );
-        headers.forEach(h -> record.headers().add(h));
-
-        when(properties.requireEventId()).thenReturn(false);
-        when(eventProcessingService.processUserRegistered(eq("legacy:identity.user.registered:0:10"), eq(payload.getDescriptorForType().getFullName()), eq(payload)))
-                .thenReturn(MemberEventProcessingService.EventProcessingResult.PROCESSED);
-
         // When
-        adapter.handleUserRegistered(record, ack);
+        adapter.consume(record, acknowledgment);
 
         // Then
-        verify(eventProcessingService, times(1)).processUserRegistered(eq("legacy:identity.user.registered:0:10"), eq(payload.getDescriptorForType().getFullName()), eq(payload));
-        verify(ack, times(1)).acknowledge();
+        verify(eventProcessingService, never()).processUserRegistered(eq(eventId), eq(payload.getDescriptorForType().getFullName()), eq(payload));
+        verify(dlqPublisher).publish(
+                org.mockito.ArgumentMatchers.any(RawKafkaRecord.class),
+                eq("Kafka message is permanently invalid"),
+                eq(1)
+        );
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
-    void givenMismatchedEventTypeHeader_whenHandleUserRegistered_thenThrowsIllegalArgumentException() {
+    void givenMissingEventIdAndNonStrictRequirement_whenHandle_thenUsesLegacyFallbackId() {
         // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder().setUserId(userId).build();
-        RecordHeaders headers = createCanonicalHeaders(eventId, "wrong.event.Type", "user-service");
-        ConsumerRecord<String, UserRegisteredEvent> record = new ConsumerRecord<>(
-                "identity.user.registered", 0, 0L, userId, payload
-        );
-        headers.forEach(h -> record.headers().add(h));
+        EventConsumerAdapter adapter = adapterDecoding(payload);
+        ConsumerRecord<byte[], byte[]> record = rawRecord("identity.user.registered.v1", payload, null, userId);
 
-        // When & Then
-        assertThrows(IllegalArgumentException.class, () -> adapter.handleUserRegistered(record, ack));
-        verify(ack, never()).acknowledge();
+        // When
+        adapter.consume(record, acknowledgment);
+
+        // Then
+        verify(eventProcessingService).processUserRegistered(
+                "legacy:identity.user.registered.v1:0:10",
+                payload.getDescriptorForType().getFullName(),
+                payload
+        );
+        verify(acknowledgment).acknowledge();
+    }
+
+    @Test
+    void givenUnsupportedDecodedMessage_whenHandle_thenThrowsPermanentKafkaException() {
+        // Given
+        com.google.protobuf.Empty payload = com.google.protobuf.Empty.getDefaultInstance();
+        EventConsumerAdapter adapter = adapterDecoding(payload);
+        RawKafkaRecord raw = RawKafkaRecord.from(rawRecord("unsupported.v1", payload, eventId, userId));
+
+        // When / Then
+        assertThrows(PermanentKafkaException.class, () -> adapter.handle(new DecodedKafkaRecord(raw, payload)));
+    }
+
+    @Test
+    void givenDynamicMessageUserRegistered_whenHandle_thenConvertsAndProcesses() throws Exception {
+        // Given
+        UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
+                .setUserId(userId)
+                .setFullName("Jane Dynamic")
+                .build();
+        com.google.protobuf.DynamicMessage dynamic = com.google.protobuf.DynamicMessage.parseFrom(
+                payload.getDescriptorForType(), payload.toByteString()
+        );
+        EventConsumerAdapter adapter = adapterDecoding(dynamic);
+        ConsumerRecord<byte[], byte[]> record = rawRecord("identity.user.registered.v1", payload, eventId, userId);
+
+        // When
+        adapter.consume(record, acknowledgment);
+
+        // Then
+        verify(eventProcessingService).processUserRegistered(
+                eq(eventId),
+                eq(payload.getDescriptorForType().getFullName()),
+                org.mockito.ArgumentMatchers.argThat(event ->
+                        userId.equals(event.getUserId()) && "Jane Dynamic".equals(event.getFullName())
+                )
+        );
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -201,7 +201,7 @@ class EventConsumerAdapterUnitTest {
         // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder().setUserId(userId).build();
         ConsumerRecord<String, UserRegisteredEvent> record = new ConsumerRecord<>(
-                "identity.user.registered", 0, 0L, userId, payload
+                "identity.user.registered.v1", 0, 0L, userId, payload
         );
         record.headers().add(new RecordHeader(KafkaEventMetadata.HEADER_EVENT_ID, eventId.getBytes(StandardCharsets.UTF_8)));
 
@@ -214,14 +214,36 @@ class EventConsumerAdapterUnitTest {
     }
 
     @Test
-    void givenNullHeaders_whenGetHeaderValue_returnsNull() {
+    void givenNullHeaders_whenGetHeaderValue_thenReturnsNull() {
         assertNull(KafkaEventMetadata.getHeaderValue(null, "key"));
     }
 
-    @Test
-    void givenHeaderWithNullValue_whenGetHeaderValue_returnsNull() {
-        RecordHeaders headers = new RecordHeaders();
-        headers.add(new RecordHeader("test-key", null));
-        assertNull(KafkaEventMetadata.getHeaderValue(headers, "test-key"));
+    private EventConsumerAdapter adapterDecoding(Message payload) {
+        RawKafkaDecoder decoder = raw -> new DecodedKafkaRecord(raw, payload);
+        DeliverySleeper sleeper = duration -> { };
+        return new EventConsumerAdapter(
+                eventProcessingService,
+                properties,
+                new RawDeliveryCoordinatorFactory(decoder, dlqPublisher, sleeper)
+        );
+    }
+
+    private ConsumerRecord<byte[], byte[]> rawRecord(String topic, Message payload, String id, String key) {
+        ConsumerRecord<byte[], byte[]> record = new ConsumerRecord<>(
+                topic,
+                0,
+                10L,
+                key == null ? null : key.getBytes(StandardCharsets.UTF_8),
+                payload.toByteArray()
+        );
+        if (id != null) {
+            record.headers().add(new RecordHeader(KafkaEventMetadata.HEADER_EVENT_ID, id.getBytes(StandardCharsets.UTF_8)));
+        }
+        record.headers().add(new RecordHeader(
+                KafkaEventMetadata.HEADER_EVENT_TYPE,
+                payload.getDescriptorForType().getFullName().getBytes(StandardCharsets.UTF_8)
+        ));
+        record.headers().add(new RecordHeader(KafkaEventMetadata.HEADER_SOURCE, "test-service".getBytes(StandardCharsets.UTF_8)));
+        return record;
     }
 }
