@@ -198,7 +198,7 @@ class MemberServiceUnitTest {
     void givenGymIdFilter_whenListMembers_thenReturnsPagedMembers() {
         // Given
         Page<MemberEntity> page = new PageImpl<>(List.of(member));
-        when(memberRepository.findAll(any(PageRequest.class))).thenReturn(page);
+        when(memberRepository.findDistinctBySubscriptionGymId(eq(gymId), any(PageRequest.class))).thenReturn(page);
 
         // When
         NormalPage<MemberDto> result = memberService.listMembers(gymId, 0, 10);
@@ -206,6 +206,8 @@ class MemberServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(1, result.totalRecords());
+        verify(memberRepository).findDistinctBySubscriptionGymId(eq(gymId), any(PageRequest.class));
+        verify(memberRepository, never()).findAll(any(PageRequest.class));
     }
 
     @Test
@@ -220,6 +222,7 @@ class MemberServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(1, result.totalRecords());
+        verify(memberRepository).findAll(any(PageRequest.class));
     }
 
     @Test
@@ -234,12 +237,14 @@ class MemberServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(1, result.totalRecords());
+        verify(memberRepository).findAll(any(PageRequest.class));
     }
 
     @Test
     void givenStatusAndGymIds_whenListMembersByStatus_thenReturnsFilteredMembers() {
         // Given
-        when(memberRepository.findByStatus(eq(MembershipStatus.ACTIVE), any())).thenReturn(List.of(member));
+        when(memberRepository.findDistinctBySubscriptionStatusAndGymIdIn(
+                eq(MembershipStatus.ACTIVE), eq(List.of(gymId)), any())).thenReturn(List.of(member));
 
         // When
         List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of(gymId));
@@ -247,6 +252,9 @@ class MemberServiceUnitTest {
         // Then
         assertNotNull(result);
         assertEquals(1, result.size());
+        verify(memberRepository).findDistinctBySubscriptionStatusAndGymIdIn(
+                eq(MembershipStatus.ACTIVE), eq(List.of(gymId)), any());
+        verify(memberRepository, never()).findByStatus(any(), any());
     }
 
     @Test

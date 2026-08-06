@@ -80,7 +80,9 @@ public class MemberService implements MemberUseCase {
     public NormalPage<MemberDto> listMembers(String gymId, int page, int limit) {
         int pageSize = limit > 0 ? Math.min(limit, 100) : 10;
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), pageSize);
-        Page<MemberEntity> memberPage = memberRepository.findAll(pageRequest);
+        Page<MemberEntity> memberPage = (gymId != null && !gymId.isBlank())
+                ? memberRepository.findDistinctBySubscriptionGymId(gymId, pageRequest)
+                : memberRepository.findAll(pageRequest);
 
         return new NormalPage<>(
                 memberPage.getContent().stream().map(memberMapper::toDto).toList(),
@@ -96,7 +98,9 @@ public class MemberService implements MemberUseCase {
     @Transactional(readOnly = true)
     public List<MemberDto> listMembersByStatus(MembershipStatus status, List<String> gymIds) {
         PageRequest safetyLimit = PageRequest.of(0, MAX_UNBOUNDED_RESULT_LIMIT);
-        List<MemberEntity> entities = memberRepository.findByStatus(status, safetyLimit);
+        List<MemberEntity> entities = (gymIds != null && !gymIds.isEmpty())
+                ? memberRepository.findDistinctBySubscriptionStatusAndGymIdIn(status, gymIds, safetyLimit)
+                : memberRepository.findByStatus(status, safetyLimit);
 
         if (entities.size() >= MAX_UNBOUNDED_RESULT_LIMIT) {
             log.warn("listMembersByStatus reached safety limit threshold of {}. Query results may be truncated for status={}", MAX_UNBOUNDED_RESULT_LIMIT, status);
