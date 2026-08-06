@@ -388,4 +388,74 @@ class SubscriptionServiceUnitTest {
         verify(subscriptionRepository, times(1)).save(activeSub);
         verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
     }
+
+    @Test
+    void givenActiveSubscription_whenGetMembershipStatusByUserIdAndGymId_thenReturnsActiveDto() {
+        // given
+        when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE))
+                .thenReturn(Optional.of(activeSub));
+
+        // when
+        SubscriptionDto result = lifecycleService.getMembershipStatusByUserIdAndGymId(userId, gymId);
+
+        // then
+        assertNotNull(result);
+        assertEquals(MembershipStatus.ACTIVE, result.status());
+        verify(subscriptionRepository, never())
+                .findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED);
+    }
+
+    @Test
+    void givenOnlyPausedSubscription_whenGetMembershipStatusByUserIdAndGymId_thenReturnsPausedDto() {
+        // given
+        SubscriptionEntity pausedSub = new SubscriptionEntity();
+        pausedSub.setId(UUID.randomUUID().toString());
+        pausedSub.setMemberId(memberId);
+        pausedSub.setGymId(gymId);
+        pausedSub.setPlanId(planId);
+        pausedSub.setStatus(MembershipStatus.PAUSED);
+        pausedSub.setRemainingDays(10);
+
+        when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED))
+                .thenReturn(Optional.of(pausedSub));
+
+        // when
+        SubscriptionDto result = lifecycleService.getMembershipStatusByUserIdAndGymId(userId, gymId);
+
+        // then
+        assertEquals(MembershipStatus.PAUSED, result.status());
+    }
+
+    @Test
+    void givenNoSubscriptionForGym_whenGetMembershipStatusByUserIdAndGymId_thenReturnsNoneDto() {
+        // given
+        when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+        when(subscriptionRepository.findByMemberIdAndGymIdAndStatus(memberId, gymId, MembershipStatus.PAUSED))
+                .thenReturn(Optional.empty());
+
+        // when
+        SubscriptionDto result = lifecycleService.getMembershipStatusByUserIdAndGymId(userId, gymId);
+
+        // then
+        assertEquals(MembershipStatus.NONE, result.status());
+        assertEquals(UUID.fromString(memberId), result.memberId());
+        assertEquals(UUID.fromString(gymId), result.gymId());
+        assertNull(result.id());
+    }
+
+    @Test
+    void givenMissingMember_whenGetMembershipStatusByUserIdAndGymId_thenThrowsNotFoundException() {
+        // given
+        when(memberRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        // when / then
+        assertThrows(NotFoundException.class,
+                () -> lifecycleService.getMembershipStatusByUserIdAndGymId(userId, gymId));
+    }
 }

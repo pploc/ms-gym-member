@@ -282,4 +282,23 @@ class MemberServiceUnitTest {
         assertNotNull(result);
         assertEquals(1, result.size());
     }
+
+    @Test
+    void givenResultHitsSafetyLimit_whenListMembersByStatus_thenStillMapsAllReturnedRows() {
+        // given — repository returns exactly the safety page size
+        List<MemberEntity> batch = java.util.stream.Stream.generate(() -> {
+            MemberEntity e = new MemberEntity();
+            e.setId(UUID.randomUUID().toString());
+            e.setUserId(UUID.randomUUID().toString());
+            e.setStatus(MembershipStatus.ACTIVE);
+            return e;
+        }).limit(1000).toList();
+        when(memberRepository.findByStatus(eq(MembershipStatus.ACTIVE), any())).thenReturn(batch);
+
+        // when
+        List<MemberDto> result = memberService.listMembersByStatus(MembershipStatus.ACTIVE, null);
+
+        // then
+        assertEquals(1000, result.size());
+    }
 }
