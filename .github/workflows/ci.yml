@@ -37,3 +37,6 @@ jobs:
       push: true
       max_tags: 20
     secrets: inherit
+    permissions:
+      contents: read
+      packages: write
