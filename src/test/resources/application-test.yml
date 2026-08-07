@@ -19,6 +19,9 @@ spring:
 grpc:
   server:
     port: 0
+    tls:
+      enabled: false
+      allow-plaintext: true
 
 gym:
   kafka:

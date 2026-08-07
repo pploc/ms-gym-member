@@ -121,16 +121,16 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
         member.setStatus(MembershipStatus.EXPIRED);
         memberRepository.save(member);
 
-        Optional<SubscriptionEntity> activeSubOpt = subscriptionRepository.findByMemberIdAndStatus(member.getId(), MembershipStatus.ACTIVE)
-                .or(() -> subscriptionRepository.findByMemberIdAndStatus(member.getId(), MembershipStatus.PAUSED));
+        List<SubscriptionEntity> currentSubscriptions = subscriptionRepository.findAll(
+                SubscriptionSpecifications.hasMemberId(member.getId())
+                        .and(SubscriptionSpecifications.hasAnyStatus(List.of(MembershipStatus.ACTIVE, MembershipStatus.PAUSED)))
+        );
+        for (SubscriptionEntity subscription : currentSubscriptions) {
+            subscription.setStatus(MembershipStatus.EXPIRED);
+            subscriptionRepository.save(subscription);
+            log.info("Cancelled subscription id {} for suspended user: {}", subscription.getId(), userId);
 
-        if (activeSubOpt.isPresent()) {
-            SubscriptionEntity sub = activeSubOpt.get();
-            sub.setStatus(MembershipStatus.EXPIRED);
-            subscriptionRepository.save(sub);
-            log.info("Cancelled subscription id {} for suspended user: {}", sub.getId(), userId);
-
-            MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, sub, clock);
+            MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, subscription, clock);
             outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRED, event);
         }
 

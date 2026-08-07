@@ -30,7 +30,7 @@ grpc:
   server:
     port: ${GRPC_SERVER_PORT:50051}
     tls:
-      enabled: ${MEMBER_GRPC_TLS_ENABLED:false}
+      enabled: ${MEMBER_GRPC_TLS_ENABLED:true}
       certificate-chain: ${MEMBER_GRPC_SERVER_CERT:}
       private-key: ${MEMBER_GRPC_SERVER_KEY:}
       client-ca: ${MEMBER_GRPC_CLIENT_CA:}

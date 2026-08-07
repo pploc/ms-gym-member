@@ -5,11 +5,20 @@ import com.gym.member.member.domain.model.MembershipStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
+import java.util.Collection;
 
 public class SubscriptionSpecifications {
 
     public static Specification<SubscriptionEntity> hasStatus(MembershipStatus status) {
         return (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status);
+    }
+
+    public static Specification<SubscriptionEntity> hasMemberId(String memberId) {
+        return (root, query, cb) -> memberId == null ? null : cb.equal(root.get("memberId"), memberId);
+    }
+
+    public static Specification<SubscriptionEntity> hasAnyStatus(Collection<MembershipStatus> statuses) {
+        return (root, query, cb) -> statuses == null || statuses.isEmpty() ? null : root.get("status").in(statuses);
     }
 
     public static Specification<SubscriptionEntity> endDateOnOrBefore(LocalDate date) {

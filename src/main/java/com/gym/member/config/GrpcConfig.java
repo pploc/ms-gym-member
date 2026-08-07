@@ -38,8 +38,11 @@ public class GrpcConfig {
     @Value("${grpc.server.port:50051}")
     private int grpcPort;
 
-    @Value("${grpc.server.tls.enabled:false}")
+    @Value("${grpc.server.tls.enabled:true}")
     private boolean tlsEnabled;
+
+    @Value("${grpc.server.tls.allow-plaintext:false}")
+    private boolean allowPlaintext;
 
     @Value("${grpc.server.tls.certificate-chain:}")
     private String certificateChain;
@@ -61,7 +64,11 @@ public class GrpcConfig {
 
     @Bean
     public static WorkloadIdentityVerifier workloadIdentityVerifier() {
-        Set<String> allowedWorkloads = Set.of("ms-gym-identifier", "spiffe://gym.cluster.local/ns/default/sa/ms-gym-identifier");
+        Set<String> allowedWorkloads = Set.of(
+                "ms-gym-identifier",
+                "spiffe://gym.cluster.local/ns/default/sa/ms-gym-identifier",
+                "spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-identifier"
+        );
         return call -> {
             SSLSession sslSession = call.getAttributes().get(io.grpc.Grpc.TRANSPORT_ATTR_SSL_SESSION);
             if (sslSession == null) {
@@ -128,6 +135,9 @@ public class GrpcConfig {
 
     ServerBuilder<?> serverBuilder() throws IOException {
         if (!tlsEnabled) {
+            if (!allowPlaintext) {
+                throw new IllegalStateException("gRPC mTLS may only be disabled with explicit test configuration");
+            }
             return ServerBuilder.forPort(grpcPort);
         }
         if (certificateChain.isBlank() || privateKey.isBlank() || clientCa.isBlank()) {

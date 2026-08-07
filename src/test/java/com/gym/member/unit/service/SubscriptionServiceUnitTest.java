@@ -373,10 +373,16 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
-    void givenUserSuspended_whenSuspendMemberAndSubscription_thenExpiresMemberAndActiveSubscription() {
+    void givenActiveAndPausedSubscriptions_whenSuspendMemberAndSubscription_thenExpiresEveryCurrentSubscription() {
         // Given
+        SubscriptionEntity pausedSub = new SubscriptionEntity();
+        pausedSub.setId(UUID.randomUUID().toString());
+        pausedSub.setMemberId(memberId);
+        pausedSub.setGymId(UUID.randomUUID().toString());
+        pausedSub.setPlanId(planId);
+        pausedSub.setStatus(MembershipStatus.PAUSED);
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
-        when(subscriptionRepository.findByMemberIdAndStatus(memberId, MembershipStatus.ACTIVE)).thenReturn(Optional.of(activeSub));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub, pausedSub));
 
         // When
         expiryService.suspendMemberAndSubscription(userId);
@@ -384,9 +390,11 @@ class SubscriptionServiceUnitTest {
         // Then
         assertEquals(MembershipStatus.EXPIRED, member.getStatus());
         assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
-        verify(memberRepository, times(1)).save(member);
-        verify(subscriptionRepository, times(1)).save(activeSub);
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
+        assertEquals(MembershipStatus.EXPIRED, pausedSub.getStatus());
+        verify(memberRepository).save(member);
+        verify(subscriptionRepository).save(activeSub);
+        verify(subscriptionRepository).save(pausedSub);
+        verify(outboxEventWriter, times(2)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
     }
 
     @Test
