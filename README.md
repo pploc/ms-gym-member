@@ -78,6 +78,8 @@ src/main/java/com/gym/member/
 
 ### 3. Run Application Locally
 ```bash
+export MEMBER_GRPC_TLS_ENABLED=false
+export GRPC_SERVER_TLS_ALLOW_PLAINTEXT=true
 ./gradlew bootRun
 ```
 
@@ -85,6 +87,9 @@ src/main/java/com/gym/member/
 ```bash
 ./gradlew stopEnv
 ```
+
+### 5. gRPC / Postman bodies
+See [LOCAL_TESTING.md](./LOCAL_TESTING.md). Prefer it over outdated `GRPCURL.md` (v3 claims, no gym catalog on Member).
 
 ---
 

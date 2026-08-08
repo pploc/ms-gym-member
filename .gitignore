@@ -19,3 +19,8 @@
 *.log
 .DS_Store
 .claude/
+
+# Local mTLS (scripts/generate-local-certs.sh)
+/certs/
+*.p12
+*.pem
