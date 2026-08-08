@@ -168,6 +168,30 @@ tasks.register('stopEnv', Exec) {
     commandLine 'docker', 'compose', 'down'
 }
 
+tasks.register('ensureLocalCerts', Exec) {
+    group = 'environment'
+    description = 'Generate local mTLS material under certs/local if missing'
+    workingDir = projectDir
+    commandLine 'sh', '-c', '''
+set -eu
+need=
+for f in certs/local/server.crt certs/local/server.key certs/local/ca.crt \
+         certs/local/client-postman.crt certs/local/client-postman.key; do
+  if [ ! -f "$f" ]; then need=1; break; fi
+done
+if [ -n "$need" ]; then
+  echo "Generating local mTLS certs under certs/local ..."
+  ./scripts/generate-local-certs.sh
+else
+  echo "Local mTLS certs already present under certs/local"
+fi
+'''
+}
+
+tasks.named('bootRun') {
+    dependsOn 'ensureLocalCerts'
+}
+
 spotless {
     java {
         target 'src/*/java/**/*.java'

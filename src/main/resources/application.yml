@@ -30,10 +30,13 @@ grpc:
   server:
     port: ${GRPC_SERVER_PORT:50051}
     tls:
+      # Local default: mTLS with certs/local from ./scripts/generate-local-certs.sh (bootRun ensures).
+      # Prod must set MEMBER_GRPC_* paths (or mount) and never ship local CA.
       enabled: ${MEMBER_GRPC_TLS_ENABLED:true}
-      certificate-chain: ${MEMBER_GRPC_SERVER_CERT:}
-      private-key: ${MEMBER_GRPC_SERVER_KEY:}
-      client-ca: ${MEMBER_GRPC_CLIENT_CA:}
+      allow-plaintext: ${MEMBER_GRPC_ALLOW_PLAINTEXT:false}
+      certificate-chain: ${MEMBER_GRPC_SERVER_CERT:certs/local/server.crt}
+      private-key: ${MEMBER_GRPC_SERVER_KEY:certs/local/server.key}
+      client-ca: ${MEMBER_GRPC_CLIENT_CA:certs/local/ca.crt}
 
 logging:
   level:

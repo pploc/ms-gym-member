@@ -58,15 +58,21 @@ cat >"$out/README.txt" <<EOF
 Member local mTLS (scripts/generate-local-certs.sh)
 P12 password: $pass
 
-Server env:
+Server env (or rely on application.yml defaults + bootRun ensureLocalCerts):
   export MEMBER_GRPC_TLS_ENABLED=true
-  # do not set allow-plaintext when TLS on
+  export MEMBER_GRPC_ALLOW_PLAINTEXT=false
   export MEMBER_GRPC_SERVER_CERT=$out/server.crt
   export MEMBER_GRPC_SERVER_KEY=$out/server.key
   export MEMBER_GRPC_CLIENT_CA=$out/ca.crt
 
 Postman public RPCs: client-postman.p12 + x-user-* metadata
 GetMembershipStatusByUserId: client-identifier.p12 (workload)
+
+grpcurl public example:
+  grpcurl -cacert $out/ca.crt \\
+    -cert $out/client-postman.crt -key $out/client-postman.key \\
+    -H 'x-user-id: u1' -H 'x-user-role: CUSTOMER' -H 'x-membership-status: NONE' \\
+    -d '{"memberId":"..."}' localhost:50051 member.v1.MemberService/GetMember
 EOF
 
 echo "Wrote certs under $out"

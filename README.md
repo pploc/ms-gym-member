@@ -78,8 +78,19 @@ src/main/java/com/gym/member/
 
 ### 3. Run Application Locally
 ```bash
+./gradlew bootRun
+```
+
+`bootRun` runs `ensureLocalCerts` when `certs/local/` is incomplete. Defaults:
+
+- gRPC **mTLS** on `:50051` (`certs/local/server.*` + `ca.crt`)
+- claim headers for user RPCs (no JWT)
+
+Plaintext override:
+
+```bash
 export MEMBER_GRPC_TLS_ENABLED=false
-export GRPC_SERVER_TLS_ALLOW_PLAINTEXT=true
+export MEMBER_GRPC_ALLOW_PLAINTEXT=true
 ./gradlew bootRun
 ```
 
@@ -99,3 +110,15 @@ Continuous Integration and Container Builds are automated via GitHub Actions usi
 
 - **Testing**: Runs JUnit 5 test suite on JDK 26
 - **Docker Build**: Builds and pushes multi-stage Docker images to GitHub Container Registry (`ghcr.io/pploc/ms-gym-member:latest`)
+
+## gRPC TLS config
+
+| Env | Default | Purpose |
+|-----|---------|---------|
+| `MEMBER_GRPC_TLS_ENABLED` | `true` | mTLS |
+| `MEMBER_GRPC_ALLOW_PLAINTEXT` | `false` | test-only plaintext |
+| `MEMBER_GRPC_SERVER_CERT` | `certs/local/server.crt` | server chain; **prod must override** |
+| `MEMBER_GRPC_SERVER_KEY` | `certs/local/server.key` | server key; **prod must override** |
+| `MEMBER_GRPC_CLIENT_CA` | `certs/local/ca.crt` | client trust CA; **prod must override** |
+
+Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image. Production always sets the three `MEMBER_GRPC_*` path env vars to real certs.

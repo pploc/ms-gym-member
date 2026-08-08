@@ -4,49 +4,47 @@ Copy-paste gRPC bodies for Postman / grpcurl against **current** `member.v1` con
 
 > Older `GRPCURL.md` still shows JWT Bearer + pre-split gym/plan RPCs. Prefer **this file**: trusted claim metadata + v3 methods only.
 
-## 1. Start
+## 1. Start (default = mTLS)
 
 ```bash
 cd ms-gym-member
 ./gradlew startEnv
-```
-
-### Option A — plaintext gRPC
-
-```bash
-export MEMBER_GRPC_TLS_ENABLED=false
-export GRPC_SERVER_TLS_ALLOW_PLAINTEXT=true
 ./gradlew bootRun
 ```
 
-### Option B — local mTLS (Postman client cert)
+`bootRun` runs `ensureLocalCerts` if `certs/local/` incomplete. Defaults in `application.yml`:
 
-```bash
-./scripts/generate-local-certs.sh
-# certs/local/ gitignored; P12 password: changeit
-
-export MEMBER_GRPC_TLS_ENABLED=true
-export MEMBER_GRPC_SERVER_CERT="$PWD/certs/local/server.crt"
-export MEMBER_GRPC_SERVER_KEY="$PWD/certs/local/server.key"
-export MEMBER_GRPC_CLIENT_CA="$PWD/certs/local/ca.crt"
-./gradlew bootRun
-```
+| Env / property | Default |
+|----------------|---------|
+| `MEMBER_GRPC_TLS_ENABLED` | `true` |
+| `MEMBER_GRPC_ALLOW_PLAINTEXT` | `false` |
+| `MEMBER_GRPC_SERVER_CERT` | `certs/local/server.crt` |
+| `MEMBER_GRPC_SERVER_KEY` | `certs/local/server.key` |
+| `MEMBER_GRPC_CLIENT_CA` | `certs/local/ca.crt` |
 
 | Port | Protocol |
 |------|----------|
 | `8080` | HTTP (if exposed; catalog is **not** on Member after G6 split) |
-| `50051` | gRPC (plaintext A, or mTLS B) |
+| `50051` | gRPC **mTLS** (client cert required) |
 | `5432` | Postgres `gym_member` |
 | `9092` / `8081` | Kafka + Schema Registry (from `startEnv`) |
 
 Stop deps: `./gradlew stopEnv`.
+
+Plaintext override:
+
+```bash
+export MEMBER_GRPC_TLS_ENABLED=false
+export MEMBER_GRPC_ALLOW_PLAINTEXT=true
+./gradlew bootRun
+```
 
 Proto:
 
 `../gym-proto/proto/member/v1/member.proto`  
 import path root: `../gym-proto/proto`
 
-### Postman mTLS (option B)
+### Postman / grpcurl mTLS
 
 1. Certificates → host `localhost:50051` → `client-postman.crt` + `client-postman.key` (or `.p12` / `changeit`).
 2. Trust `certs/local/ca.crt` for server.
@@ -216,10 +214,12 @@ x-membership-status: NONE
 
 Needs Identifier client cert over mTLS. Plaintext Postman → `PERMISSION_DENIED` / workload failure (expected).
 
-## 5. grpcurl examples
+## 5. grpcurl examples (mTLS default)
 
 ```bash
+# from ms-gym-member
 PROTO_DIR=../gym-proto/proto
+C=certs/local
 H=(
   -H 'x-user-id: 11111111-1111-1111-1111-111111111111'
   -H 'x-user-role: CUSTOMER'
@@ -227,13 +227,21 @@ H=(
   -H 'x-membership-status: NONE'
 )
 
-grpcurl -plaintext -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H[@]}" \
+grpcurl -cacert "$C/ca.crt" -cert "$C/client-postman.crt" -key "$C/client-postman.key" \
+  -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H[@]}" \
   -d '{"memberId":"31b6a40a-99d7-4f22-b6f7-f62a11298ba0"}' \
   localhost:50051 member.v1.MemberService/GetMember
 
-grpcurl -plaintext -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H[@]}" \
+grpcurl -cacert "$C/ca.crt" -cert "$C/client-postman.crt" -key "$C/client-postman.key" \
+  -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H[@]}" \
   -d '{"planId":"44444444-4444-4444-4444-444444444444","provider":"MOMO","discountCode":""}' \
   localhost:50051 member.v1.MemberService/PurchaseMembership
+
+# internal GetMembershipStatusByUserId (Identifier SAN)
+grpcurl -cacert "$C/ca.crt" -cert "$C/client-identifier.crt" -key "$C/client-identifier.key" \
+  -import-path "$PROTO_DIR" -proto member/v1/member.proto \
+  -d '{"userId":"11111111-1111-1111-1111-111111111111","gymId":"22222222-2222-2222-2222-222222222222"}' \
+  localhost:50051 member.v1.MemberService/GetMembershipStatusByUserId
 ```
 
 If a field is dropped, try snake_case (`member_id`); protobuf JSON accepts both.
@@ -292,6 +300,6 @@ Member alone: profile/status RPCs if data exists (seed / prior Kafka `UserRegist
 |---------|--------|
 | `UNAUTHENTICATED` | missing/invalid claim metadata |
 | `PERMISSION_DENIED` | wrong role or internal RPC without mTLS |
-| TLS handshake error | set `MEMBER_GRPC_TLS_ENABLED=false` and `GRPC_SERVER_TLS_ALLOW_PLAINTEXT=true` |
+| TLS handshake error | missing client cert, or wrong CA; plaintext needs `MEMBER_GRPC_TLS_ENABLED=false` + `MEMBER_GRPC_ALLOW_PLAINTEXT=true` |
 | Purchase / resolve errors | Plans or Payment not running; non-blank discount |
 | Unknown method `GetPlans` / gym RPCs | removed in v3 — use **ms-gym-plans** |
