@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @ComponentScan(basePackages = {"com.gym.member", "com.gym.common"})
 public class MsGymMemberApplication {
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         SpringApplication.run(MsGymMemberApplication.class, args);
     }
 }
