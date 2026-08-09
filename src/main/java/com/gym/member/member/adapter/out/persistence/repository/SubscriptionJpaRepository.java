@@ -6,11 +6,16 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,4 +30,12 @@ public interface SubscriptionJpaRepository extends JpaRepository<SubscriptionEnt
             @Param("gymId") String gymId,
             @Param("statuses") Collection<MembershipStatus> statuses
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
+    @Query("select s from SubscriptionEntity s where s.status = :status and s.endDate < :today order by s.id")
+    List<SubscriptionEntity> findExpiredForUpdate(
+            @Param("status") MembershipStatus status,
+            @Param("today") LocalDate today,
+            Pageable pageable);
 }

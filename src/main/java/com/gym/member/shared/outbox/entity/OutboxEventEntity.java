@@ -37,6 +37,9 @@ public class OutboxEventEntity {
     @Column(name = "event_type", nullable = false)
     private String eventType;
 
+    @Column(name = "dedupe_key")
+    private String dedupeKey;
+
     @Column(name = "payload_type")
     private String payloadType;
 

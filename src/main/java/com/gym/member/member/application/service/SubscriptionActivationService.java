@@ -33,6 +33,7 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
 
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;
+    private final MemberStatusService memberStatusService;
     private final OutboxEventWriter outboxEventWriter;
     private final MembershipEventFactory eventFactory;
     private final MemberProperties memberProperties;
@@ -96,8 +97,7 @@ public class SubscriptionActivationService implements SubscriptionActivationUseC
         sub.setStatus(MembershipStatus.ACTIVE);
         SubscriptionEntity savedSub = subscriptionRepository.save(sub);
 
-        member.setStatus(MembershipStatus.ACTIVE);
-        memberRepository.save(member);
+        memberStatusService.refresh(member);
 
         MembershipActivatedEvent event = eventFactory.createActivatedEvent(member, savedSub, isRenewal, clock);
         outboxEventWriter.write(

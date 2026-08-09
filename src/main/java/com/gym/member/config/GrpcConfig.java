@@ -23,10 +23,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 
-import javax.net.ssl.SSLSession;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Slf4j
@@ -63,46 +63,38 @@ public class GrpcConfig {
         return new AuthServerInterceptor(registry, workloadIdentityVerifier);
     }
 
+    private static final String GET_MEMBERSHIP_STATUS_BY_USER_ID =
+            "member.v1.MemberService/GetMembershipStatusByUserId";
+    private static final String VALIDATE_MEMBERSHIP = "member.v1.MemberService/ValidateMembership";
+    private static final String LIST_MEMBERS_BY_STATUS = "member.v1.MemberService/ListMembersByStatus";
+
     @Bean
     public static WorkloadIdentityVerifier workloadIdentityVerifier() {
-        Set<String> allowedWorkloads = Set.of(
-                "ms-gym-identifier",
-                "spiffe://gym.cluster.local/ns/default/sa/ms-gym-identifier",
-                "spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-identifier"
-        );
-        return call -> {
-            SSLSession sslSession = call.getAttributes().get(io.grpc.Grpc.TRANSPORT_ATTR_SSL_SESSION);
-            if (sslSession == null) {
-                return false;
-            }
-            try {
-                java.security.cert.Certificate[] certs = sslSession.getPeerCertificates();
-                if (certs.length == 0 || !(certs[0] instanceof java.security.cert.X509Certificate x509)) {
-                    return false;
-                }
-                var sanList = x509.getSubjectAlternativeNames();
-                if (sanList == null) {
-                    return false;
-                }
-                for (List<?> san : sanList) {
-                    if (san.size() >= 2 && san.get(0) instanceof Integer type
-                            && (type == 2 || type == 6)
-                            && san.get(1) instanceof String sanValue
-                            && allowedWorkloads.contains(sanValue)) {
-                        return true;
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Failed to verify mTLS workload identity", e);
-            }
-            return false;
-        };
+        Map<String, Set<String>> methodAllowlist = Map.of(
+                GET_MEMBERSHIP_STATUS_BY_USER_ID, workloadSans("ms-gym-identifier"),
+                VALIDATE_MEMBERSHIP, workloadSans("ms-gym-checkin"),
+                LIST_MEMBERS_BY_STATUS, workloadSans("ms-gym-notification"));
+        return call -> PeerCertificateIdentity.hasAllowedSan(
+                call, methodAllowlist.get(call.getMethodDescriptor().getFullMethodName()));
+    }
+
+    @Bean
+    public static KongIdentityServerInterceptor kongIdentityServerInterceptor(GrpcMethodRegistry registry) {
+        return new KongIdentityServerInterceptor(registry);
+    }
+
+    private static Set<String> workloadSans(String service) {
+        return Set.of(
+                service,
+                "spiffe://gym.cluster.local/ns/default/sa/" + service,
+                "spiffe://gym.cluster.local/ns/gym-system/sa/" + service);
     }
 
     public GrpcConfig(
             MemberGrpcHandler memberGrpcHandler,
             @org.springframework.beans.factory.annotation.Qualifier("workloadAuthServerInterceptor")
             @org.springframework.context.annotation.Lazy AuthServerInterceptor authServerInterceptor,
+            KongIdentityServerInterceptor kongIdentityServerInterceptor,
             ExceptionInterceptor exceptionInterceptor,
             LoggingInterceptor loggingInterceptor,
             TracingInterceptor tracingInterceptor,
@@ -115,6 +107,7 @@ public class GrpcConfig {
                 metricsInterceptor,
                 exceptionInterceptor,
                 authServerInterceptor,
+                kongIdentityServerInterceptor,
                 validationInterceptor
         );
     }

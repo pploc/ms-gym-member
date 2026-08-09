@@ -1,114 +1,89 @@
 # ms-gym-member
 
 > **Member Profile & Subscription Lifecycle Microservice**
-> **Tech Stack:** Java 26 | Spring Boot 4.1.0 | PostgreSQL | Kafka | gRPC (Port 50051) | REST (Port 8080)
+> **Tech Stack:** Java 26 | Spring Boot 4 | PostgreSQL | Kafka | gRPC mTLS (Port 50051)
 
 ---
 
-## 📋 Overview
+## Overview
 
-`ms-gym-member` is a core microservice in the Gym Management system. It owns member profiles, gym location configurations, subscription plans, and the member state machine.
+`ms-gym-member` owns member profiles, multi-gym subscriptions, purchase orchestration, and membership lifecycle events.
 
-### Key Responsibilities
-- **Member Lifecycle Management**: (`NONE → ACTIVE → PAUSED → EXPIRED`)
-- **Subscription State Machine**:
-  - Flexible plans: `MONTHLY`, `YEARLY`, `LIFETIME`
-  - Pause & Resume rules: max 30-day pause limit, max 2 pauses per cycle, `LIFETIME` pause restriction (`CannotPauseLifetimeException`)
-- **Gym Location Management**: CRUD for canonical gym locations
-- **Check-in Authorization**: Supplies canonical gym details and validates active membership for the future Check-in Service
-- **QR Boundary**: Check-in owns kiosk credentials, QR root keys, payload issuance, and validation
-- **Event-Driven Integration**:
-  - Consumes `identity.user.registered`, `payment.completed`
-  - Publishes `membership.activated`, `membership.paused`, `membership.resumed`, `membership.expiring-soon`, `membership.expired`
+It does **not** own gym locations or plan catalog data. Those live in **ms-gym-plans**. Member stores only opaque `gym_id` / `plan_id` references plus purchased snapshots.
+
+### Key responsibilities
+- Member shell + profile updates
+- Subscription state machine (`NONE` / `ACTIVE` / `PAUSED` / `EXPIRED`) with multi-gym aggregate status
+- Durable purchase initiation (`idempotency_key` → stable `purchase_id` as Payment `reference_id`)
+- Outbox lifecycle events and atomic Kafka consumer claims
+- Workload RPCs for Identifier, Check-in, and Notification over verified mTLS SAN
 
 ---
 
-## 🛠 Tech Stack & Dependencies
+## Trust boundaries
 
-- **Language & Runtime**: Java 26 (Eclipse Temurin 26)
-- **Framework**: Spring Boot 4.1.0 (Spring Data JPA, Spring Kafka, Spring Web)
-- **Database**: PostgreSQL 16+ (Schema migrations managed via Flyway)
-- **Shared Libraries (GitHub Packages)**:
-  - `com.gym:common-java:1.0.1`
-  - `com.gym.proto:gym-proto-java:1.0.0`
-- **Containerization & Infra**: Docker, Docker Compose, Kubernetes Helm Charts (`gym-infra`)
+| Path | Peer SAN | Notes |
+|------|----------|-------|
+| End-user RPCs | Kong | Kong verifies JWT, injects `x-user-*`; Member accepts those headers only from Kong SAN |
+| `GetMembershipStatusByUserId` | `ms-gym-identifier` | no user claims |
+| `ValidateMembership` | `ms-gym-checkin` | no user claims |
+| `ListMembersByStatus` | `ms-gym-notification` | requires ≥1 `gym_ids` |
+
+NetworkPolicy (Helm overlay) admits gRPC `50051` from Kong + those three workloads only. HTTP `8080` is actuator/health.
+
+Internal methods are never Kong-routed. Public REST is deferred until a generated gRPC-Gateway exists.
 
 ---
 
-## 🏗 Project Architecture
-
-Domain-Driven Design (DDD) with Hexagonal / Clean Architecture:
+## Architecture
 
 ```
 src/main/java/com/gym/member/
-├── member/                    # Bounded Context: Member & Subscription Domain
-│   ├── domain/                # Aggregates, Enums, DTOs, Events, Exceptions
-│   ├── application/           # Member & Subscription Use Cases, Services, Schedulers
-│   └── adapter/               # gRPC Inbound Delegates/Handlers, Persistence Entities & Repositories
-├── plans/                     # Outbound Plans client (ResolvePurchasablePlan only)
-│   └── adapter/out/grpc/      # Plans mTLS gRPC client
-├── payment/                   # Bounded Context: Payment Integration & Event Listener
-│   └── adapter/               # Payment gRPC Client & Kafka Event Consumer Adapters
-├── shared/                    # Shared Infrastructure Context
-│   ├── outbox/                # Transactional Outbox Pattern (Entities, Repositories, Relay Service, Schedulers)
-│   ├── idempotency/           # Consumer Idempotency Tracking
-│   └── mapper/                # Common Mapping Utilities
-└── config/                    # Spring Boot, Security, and gRPC Configuration
+├── member/                    # Member & subscription domain
+│   ├── domain/
+│   ├── application/           # purchase, lifecycle, expiry, event processing
+│   └── adapter/               # gRPC, JPA, Specifications
+├── plans/                     # Plans ResolvePurchasablePlan client
+├── payment/                   # Payment InitiatePayment client + Kafka consumers
+├── shared/                    # outbox, processed-event idempotency
+└── config/                    # mTLS, Kong interceptor, method SAN allowlist
 ```
 
-Catalog/location ownership lives in **ms-gym-plans**. Member keeps opaque `gym_id`/`plan_id` plus purchased snapshots and `pending_purchases`.
 ---
 
-## ⚡ Quick Start & Testing
+## Quick start
 
 ### Prerequisites
-- JDK 26 installed (`java -version`)
-- Docker & Docker Compose running
+- JDK 26
+- Docker / Docker Compose
 
-### 1. Run Unit Tests
+### Unit tests
 ```bash
 ./gradlew test
 ```
 
-### 2. Start Local Testing Environment (PostgreSQL + Kafka KRaft - Zookeeper-less)
+### Local dependencies
 ```bash
-./gradlew startEnv
-```
-
-### 3. Run Application Locally
-```bash
-./gradlew bootRun
-```
-
-`bootRun` runs `ensureLocalCerts` when `certs/local/` is incomplete. Defaults:
-
-- gRPC **mTLS** on `:50051` (`certs/local/server.*` + `ca.crt`)
-- claim headers for user RPCs (no JWT)
-
-Plaintext override:
-
-```bash
-export MEMBER_GRPC_TLS_ENABLED=false
-export MEMBER_GRPC_ALLOW_PLAINTEXT=true
-./gradlew bootRun
-```
-
-### 4. Stop Local Testing Environment
-```bash
+./gradlew startEnv   # PostgreSQL + Kafka + Schema Registry
+./gradlew bootRun    # generates certs/local if missing
 ./gradlew stopEnv
 ```
 
-### 5. gRPC / Postman bodies
-See [LOCAL_TESTING.md](./LOCAL_TESTING.md). Prefer it over outdated `GRPCURL.md` (v3 claims, no gym catalog on Member).
+Local testing commands: [LOCAL_TESTING.md](./LOCAL_TESTING.md).
 
 ---
 
-## ⚙️ CI/CD Pipeline
+## Purchase durability
 
-Continuous Integration and Container Builds are automated via GitHub Actions using reusable workflows from [`gym-infra`](https://github.com/pploc/gym-infra):
+1. Client sends required `idempotency_key`.
+2. Member creates or loads one `pending_purchases` row for `(user_id, idempotency_key)`.
+3. TX commits **before** Payment RPC.
+4. Payment receives stable `reference_id=purchase_id`.
+5. Retry reuses same purchase/reference; payload mismatch conflicts.
 
-- **Testing**: Runs JUnit 5 test suite on JDK 26
-- **Docker Build**: Builds and pushes multi-stage Docker images to GitHub Container Registry (`ghcr.io/pploc/ms-gym-member:latest`)
+Payment must return the same intent for repeated `InitiatePayment` with the same membership `reference_id`.
+
+---
 
 ## gRPC TLS config
 
@@ -120,13 +95,18 @@ Continuous Integration and Container Builds are automated via GitHub Actions usi
 | `MEMBER_GRPC_SERVER_KEY` | `certs/local/server.key` | server key; **prod must override** |
 | `MEMBER_GRPC_CLIENT_CA` | `certs/local/ca.crt` | client trust CA; **prod must override** |
 | `PLANS_GRPC_TARGET` | _(empty)_ | Plans gRPC host:port; required for purchase |
-| `PLANS_GRPC_DEADLINE` | `PT3S` | Plans RPC deadline |
-| `PLANS_GRPC_USE_PLAINTEXT` | `false` | Plans client plaintext (local only) |
-| `PLANS_CLIENT_CERT` | `certs/local/client-member.crt` | Member→Plans client cert |
-| `PLANS_CLIENT_KEY` | `certs/local/client-member.key` | Member→Plans client key |
-| `PLANS_SERVER_CA` | `certs/local/ca.crt` | Plans server CA |
-| `PLANS_GRPC_AUTHORITY` | `ms-gym-plans` | TLS authority override |
 | `PAYMENT_GRPC_TARGET` | _(empty)_ | Payment gRPC host:port |
-| `PAYMENT_GRPC_USE_PLAINTEXT` | `true` | Payment client plaintext default |
 
-Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image. Production always sets the three `MEMBER_GRPC_*` path env vars to real certs.
+Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image.
+
+### Shared libraries
+- `com.gym:common-java:2.1.0`
+- `com.gym.proto:gym-proto-java:4.1.0`
+
+---
+
+## CI/CD
+
+Reusable workflows from [`gym-infra`](https://github.com/pploc/gym-infra):
+- JUnit 5 on JDK 26
+- Multi-stage image to `ghcr.io/pploc/ms-gym-member`

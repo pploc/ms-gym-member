@@ -42,6 +42,9 @@ public class PendingPurchaseEntity extends BaseEntity {
     @Column(name = "provider", nullable = false)
     private String provider;
 
+    @Column(name = "idempotency_key", nullable = false)
+    private String idempotencyKey;
+
     @Column(name = "payment_id")
     private String paymentId;
 

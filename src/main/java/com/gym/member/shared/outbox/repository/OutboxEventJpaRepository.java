@@ -23,7 +23,8 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
     @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2")})
     @Query("""
             select e from OutboxEventEntity e
-            where (e.status = :pending or (e.status = :inFlight and e.nextAttemptAt <= :now))
+            where (e.status = :pending and e.nextAttemptAt <= :now)
+               or (e.status = :inFlight and e.nextAttemptAt <= :now)
             order by e.createdAt asc, e.id asc
             """)
     List<OutboxEventEntity> findReady(
@@ -42,9 +43,5 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEventEntit
         return findReady(now, pending, inFlight, Pageable.ofSize(batchSize));
     }
 
-    boolean existsByAggregateIdAndEventTypeAndCreatedAtGreaterThanEqual(
-            String aggregateId,
-            String eventType,
-            Instant since
-    );
+    boolean existsByDedupeKey(String dedupeKey);
 }

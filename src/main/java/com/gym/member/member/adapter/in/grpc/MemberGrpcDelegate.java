@@ -26,9 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGym;
-import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGymIds;
 import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireSelf;
-import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireServiceGym;
 import static com.gym.member.adapter.in.grpc.GrpcErrorHandler.execute;
 
 @Component
@@ -67,9 +65,7 @@ public class MemberGrpcDelegate {
 
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         execute(responseObserver, () -> {
-            if (!request.getGymId().isBlank()) {
-                requireGym(request.getGymId());
-            }
+            requireGym(request.getGymId());
             NormalPage<MemberDto> page = memberUseCase.listMembers(request.getGymId(), request.getPage(), request.getLimit());
             List<GetMemberResponse> responses = page.items().stream().map(memberMapper::toGetMemberResponse).toList();
             return ListMembersResponse.newBuilder()
@@ -81,7 +77,6 @@ public class MemberGrpcDelegate {
 
     public void validateMembership(ValidateMembershipRequest request, StreamObserver<ValidateMembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
-            requireServiceGym(request.getGymId());
             MemberDto member = memberUseCase.getMember(request.getMemberId());
             SubscriptionDto sub = subscriptionLifecycleUseCase.getActiveSubscription(member.id().toString(), request.getGymId());
             boolean valid = sub.status() == MembershipStatus.ACTIVE;
@@ -94,7 +89,6 @@ public class MemberGrpcDelegate {
 
     public void listMembersByStatus(ListMembersByStatusRequest request, StreamObserver<ListMembersByStatusResponse> responseObserver) {
         execute(responseObserver, () -> {
-            requireGymIds(request.getGymIdsList());
             MembershipStatus status = ProtoEnums.toDomain(request.getStatus());
             List<MemberDto> dtos = memberUseCase.listMembersByStatus(status, request.getGymIdsList());
             List<GetMemberResponse> responses = dtos.stream().map(memberMapper::toGetMemberResponse).toList();

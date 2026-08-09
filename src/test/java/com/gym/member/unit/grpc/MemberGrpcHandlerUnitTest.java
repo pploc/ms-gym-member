@@ -210,20 +210,24 @@ class MemberGrpcHandlerUnitTest {
     }
 
     @Test
-    void givenPurchaseRequest_whenPurchaseMembership_thenReturnsPurchaseMembershipResponse() {
+    void given_purchase_request_when_purchase_membership_then_returns_purchase_membership_response() {
+        // given
         String planId = UUID.randomUUID().toString();
         PurchaseMembershipRequest request = PurchaseMembershipRequest.newBuilder()
                 .setPlanId(planId)
                 .setProvider("STRIPE")
+                .setIdempotencyKey("key-1")
                 .build();
         when(memberService.getMemberByUserId(userId.toString())).thenReturn(memberDto);
         when(membershipPurchaseUseCase.purchaseMembership(
-                userId.toString(), gymId.toString(), planId, "STRIPE", ""))
+                userId.toString(), gymId.toString(), planId, "STRIPE", "", "key-1"))
                 .thenReturn(PurchaseMembershipResponse.newBuilder().setPaymentId("pay-1").setPaymentUrl("http://pay").build());
 
+        // when
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.purchaseMembership(request, responseObserver));
 
+        // then
         verify(responseObserver, times(1)).onNext(any(PurchaseMembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
@@ -317,7 +321,8 @@ class MemberGrpcHandlerUnitTest {
     }
 
     @Test
-    void givenValidMember_whenValidateMembership_thenReturnsValidateMembershipResponse() {
+    void given_valid_member_when_validate_membership_then_returns_validate_membership_response() {
+        // given — internal workload; transport identity is enforced by interceptors, not role claims
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder()
                 .setMemberId(memberId.toString())
                 .setGymId(gymId.toString())
@@ -329,27 +334,30 @@ class MemberGrpcHandlerUnitTest {
         when(subscriptionLifecycleUseCase.getActiveSubscription(memberId.toString(), gymId.toString()))
                 .thenReturn(subDto);
 
-        runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () ->
-                memberGrpcHandler.validateMembership(request, responseObserver));
+        // when
+        memberGrpcHandler.validateMembership(request, responseObserver);
 
+        // then
         verify(responseObserver, times(1)).onNext(any(ValidateMembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void givenErrorOnValidateMembership_whenValidateMembership_thenCallsOnError() {
+    void given_error_on_validate_membership_when_validate_membership_then_calls_on_error() {
+        // given
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder()
                 .setMemberId(memberId.toString())
                 .setGymId(gymId.toString())
                 .build();
         when(memberService.getMember(any())).thenThrow(new RuntimeException("Error"));
 
-        assertThrows(Throwable.class, () -> runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () ->
-                memberGrpcHandler.validateMembership(request, responseObserver)));
+        // when / then
+        assertThrows(Throwable.class, () -> memberGrpcHandler.validateMembership(request, responseObserver));
     }
 
     @Test
-    void givenStatus_whenListMembersByStatus_thenReturnsListMembersByStatusResponse() {
+    void given_status_when_list_members_by_status_then_returns_list_members_by_status_response() {
+        // given — internal workload; transport identity is enforced by interceptors, not role claims
         ListMembersByStatusRequest request = ListMembersByStatusRequest.newBuilder()
                 .setStatus(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE)
                 .addGymIds(gymId.toString())
@@ -357,21 +365,25 @@ class MemberGrpcHandlerUnitTest {
         when(memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of(gymId.toString())))
                 .thenReturn(List.of(memberDto));
 
-        runWithClaims("notification-service-id", "NOTIFICATION_SERVICE", gymId.toString(), () ->
-                memberGrpcHandler.listMembersByStatus(request, responseObserver));
+        // when
+        memberGrpcHandler.listMembersByStatus(request, responseObserver);
 
+        // then
         verify(responseObserver, times(1)).onNext(any(ListMembersByStatusResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void givenErrorOnListMembersByStatus_whenListMembersByStatus_thenCallsOnError() {
-        ListMembersByStatusRequest request =
-                ListMembersByStatusRequest.newBuilder().setStatus(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE).build();
+    void given_error_on_list_members_by_status_when_list_members_by_status_then_calls_on_error() {
+        // given
+        ListMembersByStatusRequest request = ListMembersByStatusRequest.newBuilder()
+                .setStatus(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE)
+                .addGymIds(gymId.toString())
+                .build();
         when(memberService.listMembersByStatus(any(), any())).thenThrow(new RuntimeException("Error"));
 
-        assertThrows(Throwable.class, () -> runWithClaims("notification-service-id", "NOTIFICATION_SERVICE", gymId.toString(), () ->
-                memberGrpcHandler.listMembersByStatus(request, responseObserver)));
+        // when / then
+        assertThrows(Throwable.class, () -> memberGrpcHandler.listMembersByStatus(request, responseObserver));
     }
 
     @Test

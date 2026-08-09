@@ -18,4 +18,6 @@ public interface PendingPurchaseJpaRepository
     Optional<PendingPurchaseEntity> findWithLockingById(String id);
 
     Optional<PendingPurchaseEntity> findByIdAndStatus(String id, PurchaseStatus status);
+
+    Optional<PendingPurchaseEntity> findByUserIdAndIdempotencyKey(String userId, String idempotencyKey);
 }

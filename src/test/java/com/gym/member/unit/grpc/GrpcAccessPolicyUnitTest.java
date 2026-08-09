@@ -10,49 +10,65 @@ import io.grpc.Context;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GrpcAccessPolicyUnitTest {
 
     @Test
-    void givenMismatchUserId_whenRequireSelf_throwsForbiddenException() {
-        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1", null);
+    void given_mismatch_user_id_when_require_self_then_throws_forbidden_exception() {
+        // given
+        UserClaims claims = new UserClaims("user-1", "CUSTOMER", "gym-1", null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
+
+        // when / then
         ctx.run(() -> {
-            MemberDto member = new MemberDto(UUID.randomUUID(), UUID.randomUUID(), "Name", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
+            MemberDto member = new MemberDto(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    "Name",
+                    null,
+                    null,
+                    null,
+                    MembershipStatus.ACTIVE,
+                    Instant.now(),
+                    Instant.now());
             assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireSelf(member));
         });
     }
 
     @Test
-    void givenMismatchGymId_whenRequireGym_throwsForbiddenException() {
-        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1", null);
+    void given_mismatch_gym_id_when_require_gym_then_throws_forbidden_exception() {
+        // given
+        UserClaims claims = new UserClaims("user-1", "ADMIN", "gym-1", null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
-        ctx.run(() -> {
-            assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGym("gym-2"));
-            assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireServiceGym("gym-2"));
-        });
+
+        // when / then
+        ctx.run(() -> assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGym("gym-2")));
     }
 
     @Test
-    void givenSuperAdmin_whenRequireGym_returnsWithoutException() {
+    void given_blank_gym_id_when_require_gym_for_admin_then_throws_forbidden_exception() {
+        // given
+        UserClaims claims = new UserClaims("user-1", "ADMIN", "gym-1", null);
+        Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
+
+        // when / then
+        ctx.run(() -> assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGym("")));
+    }
+
+    @Test
+    void given_super_admin_when_require_gym_then_returns_without_exception() {
+        // given
         UserClaims claims = new UserClaims("admin-1", "SUPER_ADMIN", null, null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
+
+        // when / then
         ctx.run(() -> {
             assertDoesNotThrow(() -> GrpcAccessPolicy.requireGym("gym-2"));
-            assertDoesNotThrow(() -> GrpcAccessPolicy.requireGymIds(List.of("gym-1", "gym-2")));
-        });
-    }
-
-    @Test
-    void givenMismatchGymIds_whenRequireGymIds_throwsForbiddenException() {
-        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1", null);
-        Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
-        ctx.run(() -> {
-            assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGymIds(List.of("gym-1", "gym-2")));
+            assertDoesNotThrow(() -> GrpcAccessPolicy.requireGym(null));
         });
     }
 }

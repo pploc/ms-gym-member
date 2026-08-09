@@ -5,7 +5,6 @@ import com.gym.member.shared.idempotency.repository.ProcessedEventJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -24,15 +23,10 @@ public class IdempotencyService {
         return processedEventRepository.existsById(eventId);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public boolean claimEvent(String eventId, String eventType) {
         int inserted = processedEventRepository.insertIfNotExists(eventId, eventType, Instant.now(clock));
         return inserted > 0;
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void releaseClaim(String eventId) {
-        processedEventRepository.deleteById(eventId);
     }
 
     @Transactional

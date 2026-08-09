@@ -21,6 +21,10 @@ public class OutboxEventWriter {
     private final Clock clock;
 
     public UUID write(String aggregateType, String aggregateId, String topic, Message payload) {
+        return write(aggregateType, aggregateId, topic, payload, null);
+    }
+
+    public UUID write(String aggregateType, String aggregateId, String topic, Message payload, String dedupeKey) {
         try {
             UUID eventId = UUID.randomUUID();
             Instant now = Instant.now(clock);
@@ -29,6 +33,7 @@ public class OutboxEventWriter {
             event.setAggregateType(aggregateType);
             event.setAggregateId(aggregateId);
             event.setEventType(payload.getClass().getSimpleName());
+            event.setDedupeKey(dedupeKey);
             event.setPayloadType(payload.getDescriptorForType().getFullName());
             event.setTopic(topic);
             event.setPayload(JSON_PRINTER.print(payload));

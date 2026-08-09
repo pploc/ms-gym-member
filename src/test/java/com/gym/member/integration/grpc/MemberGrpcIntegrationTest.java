@@ -19,7 +19,6 @@ import com.gym.proto.member.v1.ListMembersResponse;
 import com.gym.proto.member.v1.GetMemberResponse;
 import com.gym.proto.member.v1.UpdateProfileResponse;
 import com.gym.proto.member.v1.MemberServiceGrpc;
-import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.UpdateProfileRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
@@ -165,7 +164,8 @@ class MemberGrpcIntegrationTest {
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(memberId);
         assertThat(response.getFullName()).isEqualTo("John Real DB");
-        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(response.getStatus())
+                .isEqualTo(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE);
     }
 
     @Test
@@ -280,6 +280,7 @@ class MemberGrpcIntegrationTest {
         com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse response = blockingStub.getMembershipStatusByUserId(request);
         assertThat(response).isNotNull();
         assertThat(response.getMemberId()).isEqualTo(memberId);
-        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(response.getStatus())
+                .isEqualTo(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE);
     }
 }

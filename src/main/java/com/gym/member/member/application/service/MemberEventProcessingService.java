@@ -37,16 +37,7 @@ public class MemberEventProcessingService {
             log.info("Duplicate event claimed, skipping {} eventId: {}", eventType, eventId);
             return EventProcessingResult.DUPLICATE;
         }
-        try {
-            return action.get();
-        } catch (Throwable t) {
-            try {
-                idempotencyService.releaseClaim(eventId);
-            } catch (Exception e) {
-                log.error("Failed to release idempotency claim for eventId: {}", eventId, e);
-            }
-            throw t;
-        }
+        return action.get();
     }
 
     @Transactional

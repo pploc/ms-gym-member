@@ -87,14 +87,14 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     }
 
     @Override
-    @RequireRole("CHECKIN_SERVICE")
+    @RequirePolicy(RpcPolicyKind.INTERNAL_WORKLOAD)
     public void validateMembership(
             ValidateMembershipRequest request, StreamObserver<ValidateMembershipResponse> responseObserver) {
         memberGrpcDelegate.validateMembership(request, responseObserver);
     }
 
     @Override
-    @RequireRole("NOTIFICATION_SERVICE")
+    @RequirePolicy(RpcPolicyKind.INTERNAL_WORKLOAD)
     public void listMembersByStatus(
             ListMembersByStatusRequest request, StreamObserver<ListMembersByStatusResponse> responseObserver) {
         memberGrpcDelegate.listMembersByStatus(request, responseObserver);

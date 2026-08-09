@@ -28,13 +28,25 @@ public class MemberSpecifications {
     }
 
     public static Specification<MemberEntity> hasSubscriptionAtGymIn(List<String> gymIds) {
+        return hasSubscriptionWithStatusAtGymIn(null, gymIds);
+    }
+
+    public static Specification<MemberEntity> hasSubscriptionWithStatusAtGymIn(
+            MembershipStatus status, List<String> gymIds) {
         return (root, query, cb) -> {
-            if (gymIds == null || gymIds.isEmpty()) {
+            if ((gymIds == null || gymIds.isEmpty()) && status == null) {
                 return null;
             }
             Subquery<String> sub = query.subquery(String.class);
-            Root<SubscriptionEntity> s = sub.from(SubscriptionEntity.class);
-            sub.select(s.get("memberId")).where(s.get("gymId").in(gymIds));
+            Root<SubscriptionEntity> subscription = sub.from(SubscriptionEntity.class);
+            var predicate = cb.conjunction();
+            if (status != null) {
+                predicate = cb.and(predicate, cb.equal(subscription.get("status"), status));
+            }
+            if (gymIds != null && !gymIds.isEmpty()) {
+                predicate = cb.and(predicate, subscription.get("gymId").in(gymIds));
+            }
+            sub.select(subscription.get("memberId")).where(predicate);
             return root.get("id").in(sub);
         };
     }

@@ -13,10 +13,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class IdempotencyServiceUnitTest {
@@ -38,72 +41,59 @@ class IdempotencyServiceUnitTest {
     }
 
     @Test
-    void givenProcessedEvent_whenIsEventProcessed_thenReturnsTrue() {
-        // Given
+    void given_processed_event_when_is_event_processed_then_returns_true() {
+        // given
         when(repository.existsById(eventId)).thenReturn(true);
 
-        // When
+        // when
         boolean result = idempotencyService.isEventProcessed(eventId);
 
-        // Then
+        // then
         assertTrue(result);
     }
 
     @Test
-    void givenUnprocessedEvent_whenIsEventProcessed_thenReturnsFalse() {
-        // Given
+    void given_unprocessed_event_when_is_event_processed_then_returns_false() {
+        // given
         when(repository.existsById(eventId)).thenReturn(false);
 
-        // When
+        // when
         boolean result = idempotencyService.isEventProcessed(eventId);
 
-        // Then
+        // then
         assertFalse(result);
     }
 
     @Test
-    void givenNewEvent_whenClaimEvent_thenReturnsTrue() {
-        // Given
+    void given_new_event_when_claim_event_then_returns_true() {
+        // given
         when(repository.insertIfNotExists(eq(eventId), eq("user.registered"), any())).thenReturn(1);
 
-        // When
+        // when
         boolean claimed = idempotencyService.claimEvent(eventId, "user.registered");
 
-        // Then
+        // then
         assertTrue(claimed);
     }
 
     @Test
-    void givenDuplicateEvent_whenClaimEvent_thenReturnsFalse() {
-        // Given
+    void given_duplicate_event_when_claim_event_then_returns_false() {
+        // given
         when(repository.insertIfNotExists(eq(eventId), eq("user.registered"), any())).thenReturn(0);
 
-        // When
+        // when
         boolean claimed = idempotencyService.claimEvent(eventId, "user.registered");
 
-        // Then
+        // then
         assertFalse(claimed);
     }
 
     @Test
-    void givenNewEvent_whenMarkEventProcessed_thenSavesProcessedEventEntity() {
-        // Given - New event
-
-        // When
+    void given_new_event_when_mark_event_processed_then_saves_processed_event_entity() {
+        // given / when
         idempotencyService.markEventProcessed(eventId, "user.registered");
 
-        // Then
+        // then
         verify(repository, times(1)).save(any(ProcessedEventEntity.class));
-    }
-
-    @Test
-    void givenClaimedEvent_whenReleaseClaim_thenDeletesFromRepository() {
-        // Given - Claimed event
-
-        // When
-        idempotencyService.releaseClaim(eventId);
-
-        // Then
-        verify(repository, times(1)).deleteById(eventId);
     }
 }

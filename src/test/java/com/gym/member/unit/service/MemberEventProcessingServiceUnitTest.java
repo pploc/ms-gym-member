@@ -18,9 +18,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class MemberEventProcessingServiceUnitTest {
@@ -48,54 +53,66 @@ class MemberEventProcessingServiceUnitTest {
     }
 
     @Test
-    void givenDuplicateEvent_whenProcessUserRegistered_thenReturnsDuplicateResult() {
+    void given_duplicate_event_when_process_user_registered_then_returns_duplicate_result() {
+        // given
         when(idempotencyService.claimEvent(eventId, "user.registered")).thenReturn(false);
-
         UserRegisteredEvent event = UserRegisteredEvent.newBuilder()
                 .setUserId("user-123")
                 .setFullName("John Doe")
                 .build();
 
-        MemberEventProcessingService.EventProcessingResult result = service.processUserRegistered(eventId, "user.registered", event);
+        // when
+        MemberEventProcessingService.EventProcessingResult result =
+                service.processUserRegistered(eventId, "user.registered", event);
 
+        // then
         assertEquals(MemberEventProcessingService.EventProcessingResult.DUPLICATE, result);
         verify(memberUseCase, never()).createMemberShell(anyString(), anyString());
     }
 
     @Test
-    void givenBlankUserId_whenProcessUserRegistered_thenThrowsIllegalArgumentExceptionAndReleasesClaim() {
+    void given_blank_user_id_when_process_user_registered_then_throws_and_does_not_release_claim() {
+        // given
         when(idempotencyService.claimEvent(eventId, "user.registered")).thenReturn(true);
-
         UserRegisteredEvent event = UserRegisteredEvent.newBuilder()
                 .setUserId("")
                 .setFullName("John Doe")
                 .build();
 
-        assertThrows(IllegalArgumentException.class, () -> service.processUserRegistered(eventId, "user.registered", event));
-        verify(idempotencyService, times(1)).releaseClaim(eventId);
+        // when / then
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.processUserRegistered(eventId, "user.registered", event));
+        // claim stays in same TX; rollback on exception reopens redelivery path
+        verify(memberUseCase, never()).createMemberShell(anyString(), anyString());
     }
 
     @Test
-    void givenUnsupportedPaymentType_whenProcessPaymentCompleted_thenReturnsSkippedResult() {
+    void given_unsupported_payment_type_when_process_payment_completed_then_returns_skipped_result() {
+        // given
         when(idempotencyService.claimEvent(eventId, "payment.completed")).thenReturn(true);
-        when(membershipPaymentHandler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_TRAINER_BOOKING)).thenReturn(false);
-
+        when(membershipPaymentHandler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_TRAINER_BOOKING))
+                .thenReturn(false);
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setPaymentId("pay-1")
                 .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_TRAINER_BOOKING)
                 .build();
 
-        MemberEventProcessingService.EventProcessingResult result = service.processPaymentCompleted(eventId, "payment.completed", event, "user-123");
+        // when
+        MemberEventProcessingService.EventProcessingResult result =
+                service.processPaymentCompleted(eventId, "payment.completed", event, "user-123");
 
+        // then
         assertEquals(MemberEventProcessingService.EventProcessingResult.SKIPPED, result);
         verify(membershipPaymentHandler, never()).handle(any(), anyString());
     }
 
     @Test
-    void givenSupportedPaymentType_whenProcessPaymentCompleted_thenInvokesStrategyAndReturnsProcessed() {
+    void given_supported_payment_type_when_process_payment_completed_then_invokes_strategy_and_returns_processed() {
+        // given
         when(idempotencyService.claimEvent(eventId, "payment.completed")).thenReturn(true);
-        when(membershipPaymentHandler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)).thenReturn(true);
-
+        when(membershipPaymentHandler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP))
+                .thenReturn(true);
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setPaymentId("pay-1")
                 .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
@@ -103,29 +120,39 @@ class MemberEventProcessingServiceUnitTest {
                 .setReferenceId("plan-1")
                 .build();
 
-        MemberEventProcessingService.EventProcessingResult result = service.processPaymentCompleted(eventId, "payment.completed", event, "user-123");
+        // when
+        MemberEventProcessingService.EventProcessingResult result =
+                service.processPaymentCompleted(eventId, "payment.completed", event, "user-123");
 
+        // then
         assertEquals(MemberEventProcessingService.EventProcessingResult.PROCESSED, result);
         verify(membershipPaymentHandler, times(1)).handle(event, "user-123");
     }
 
     @Test
-    void givenNullPaymentEvent_whenProcessPaymentCompleted_thenThrowsIllegalArgumentException() {
+    void given_null_payment_event_when_process_payment_completed_then_throws_illegal_argument_exception() {
+        // given
         when(idempotencyService.claimEvent(eventId, "payment.completed")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> service.processPaymentCompleted(eventId, "payment.completed", null, "user-123"));
+        // when / then
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.processPaymentCompleted(eventId, "payment.completed", null, "user-123"));
     }
 
     @Test
-    void givenValidUserSuspendedEvent_whenProcessUserSuspended_thenInvokesSuspensionUseCase() {
+    void given_valid_user_suspended_event_when_process_user_suspended_then_invokes_suspension_use_case() {
+        // given
         when(idempotencyService.claimEvent(eventId, "user.suspended")).thenReturn(true);
-
         UserSuspendedEvent event = UserSuspendedEvent.newBuilder()
                 .setUserId("user-123")
                 .build();
 
-        MemberEventProcessingService.EventProcessingResult result = service.processUserSuspended(eventId, "user.suspended", event);
+        // when
+        MemberEventProcessingService.EventProcessingResult result =
+                service.processUserSuspended(eventId, "user.suspended", event);
 
+        // then
         assertEquals(MemberEventProcessingService.EventProcessingResult.PROCESSED, result);
         verify(memberSuspensionUseCase, times(1)).suspendMemberAndSubscription("user-123");
     }

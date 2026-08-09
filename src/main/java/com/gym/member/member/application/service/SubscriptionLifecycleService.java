@@ -34,6 +34,7 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
 
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;
+    private final MemberStatusService memberStatusService;
     private final OutboxEventWriter outboxEventWriter;
     private final MembershipEventFactory eventFactory;
     private final MemberProperties memberProperties;
@@ -74,6 +75,7 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
         sub.setPauseCount(sub.getPauseCount() + 1);
 
         SubscriptionEntity savedSub = subscriptionRepository.save(sub);
+        memberStatusService.refresh(member);
 
         MembershipPausedEvent event = eventFactory.createPausedEvent(member, savedSub, remainingDays, today);
         outboxEventWriter.write(
@@ -105,6 +107,7 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
         sub.setRemainingDays(null);
 
         SubscriptionEntity savedSub = subscriptionRepository.save(sub);
+        memberStatusService.refresh(member);
 
         MembershipResumedEvent event = eventFactory.createResumedEvent(member, savedSub, newEndDate);
         outboxEventWriter.write(

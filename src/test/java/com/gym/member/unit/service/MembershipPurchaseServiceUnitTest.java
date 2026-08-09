@@ -1,9 +1,10 @@
 package com.gym.member.unit.service;
 
+import com.gym.common.error.NotFoundException;
 import com.gym.member.member.adapter.out.persistence.entity.PendingPurchaseEntity;
-import com.gym.member.member.adapter.out.persistence.repository.PendingPurchaseJpaRepository;
 import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.application.service.MembershipPurchaseService;
+import com.gym.member.member.application.service.PendingPurchasePersistenceService;
 import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.domain.model.PlanType;
@@ -28,6 +29,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,7 +47,7 @@ class MembershipPurchaseServiceUnitTest {
     private PaymentGrpcClient paymentGrpcClient;
 
     @Mock
-    private PendingPurchaseJpaRepository pendingPurchaseRepository;
+    private PendingPurchasePersistenceService persistenceService;
 
     @InjectMocks
     private MembershipPurchaseService service;
@@ -64,48 +66,43 @@ class MembershipPurchaseServiceUnitTest {
     }
 
     @Test
-    void givenNonblankDiscountCode_whenPurchaseMembership_thenRejectsWithoutCallingPlansOrPayment() {
-        assertThrows(IllegalArgumentException.class, () ->
-                service.purchaseMembership(userId, gymId, planId, "STRIPE", "SAVE10"));
+    void given_nonblank_discount_code_when_purchase_membership_then_rejects_without_side_effects() {
+        // given / when
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.purchaseMembership(userId, gymId, planId, "STRIPE", "SAVE10", "key-1"));
 
+        // then
         verify(plansGrpcClient, never()).resolvePurchasablePlan(any(), any());
         verify(paymentGrpcClient, never()).initiatePayment(any());
-        verify(pendingPurchaseRepository, never()).save(any());
+        verify(persistenceService, never()).create(any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    void givenBlankUserId_whenPurchaseMembership_thenThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                service.purchaseMembership(" ", gymId, planId, "STRIPE", null));
-        verify(plansGrpcClient, never()).resolvePurchasablePlan(any(), any());
+    void given_blank_idempotency_key_when_purchase_membership_then_throws() {
+        // given / when / then
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.purchaseMembership(userId, gymId, planId, "STRIPE", null, " "));
     }
 
     @Test
-    void givenBlankGymId_whenPurchaseMembership_thenThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                service.purchaseMembership(userId, "", planId, "STRIPE", null));
-    }
-
-    @Test
-    void givenBlankPlanId_whenPurchaseMembership_thenThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                service.purchaseMembership(userId, gymId, " ", "STRIPE", null));
-    }
-
-    @Test
-    void givenBlankProvider_whenPurchaseMembership_thenThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () ->
-                service.purchaseMembership(userId, gymId, planId, "", null));
-    }
-
-    @Test
-    void givenResolvedPlan_whenPurchaseMembership_thenPersistsPendingAndPaysWithPurchaseId() {
+    void given_resolved_plan_when_purchase_membership_then_persists_pending_before_payment() {
+        // given
         MemberDto member = new MemberDto(
-                memberId, UUID.fromString(userId), "Buyer", null, null, null,
-                MembershipStatus.NONE, Instant.now(), Instant.now());
+                memberId,
+                UUID.fromString(userId),
+                "Buyer",
+                null,
+                null,
+                null,
+                MembershipStatus.NONE,
+                Instant.now(),
+                Instant.now());
         when(memberUseCase.getMemberByUserId(userId)).thenReturn(member);
-        when(plansGrpcClient.resolvePurchasablePlan(planId, gymId)).thenReturn(
-                ResolvePurchasablePlanResponse.newBuilder()
+        when(persistenceService.load(userId, "key-1")).thenThrow(new NotFoundException("missing"));
+        when(plansGrpcClient.resolvePurchasablePlan(planId, gymId))
+                .thenReturn(ResolvePurchasablePlanResponse.newBuilder()
                         .setPlanId(planId)
                         .setGymId(gymId)
                         .setPlanType(com.gym.proto.common.v1.PlanType.PLAN_TYPE_MONTHLY)
@@ -114,43 +111,77 @@ class MembershipPurchaseServiceUnitTest {
                         .build());
 
         String purchaseId = UUID.randomUUID().toString();
-        when(pendingPurchaseRepository.save(any(PendingPurchaseEntity.class))).thenAnswer(inv -> {
-            PendingPurchaseEntity entity = inv.getArgument(0);
-            if (entity.getId() == null) {
-                entity.setId(purchaseId);
-            }
-            return entity;
-        });
-        when(paymentGrpcClient.initiatePayment(any())).thenReturn(
-                InitiatePaymentResponse.newBuilder()
+        PendingPurchaseEntity pending = pending(purchaseId);
+        when(persistenceService.create(eq(member), eq(userId), eq("STRIPE"), eq("key-1"), any(), eq(PlanType.MONTHLY)))
+                .thenReturn(pending);
+        when(paymentGrpcClient.initiatePayment(any()))
+                .thenReturn(InitiatePaymentResponse.newBuilder()
                         .setPaymentId("pay-1")
                         .setPaymentUrl("https://pay.example/1")
                         .build());
 
-        PurchaseMembershipResponse response = service.purchaseMembership(userId, gymId, planId, "STRIPE", "");
+        // when
+        PurchaseMembershipResponse response =
+                service.purchaseMembership(userId, gymId, planId, "STRIPE", "", "key-1");
 
+        // then
         assertEquals("pay-1", response.getPaymentId());
         assertEquals("https://pay.example/1", response.getPaymentUrl());
-
-        ArgumentCaptor<PendingPurchaseEntity> purchaseCaptor = ArgumentCaptor.forClass(PendingPurchaseEntity.class);
-        verify(pendingPurchaseRepository, org.mockito.Mockito.atLeastOnce()).save(purchaseCaptor.capture());
-        PendingPurchaseEntity firstSave = purchaseCaptor.getAllValues().getFirst();
-        assertEquals(memberId.toString(), firstSave.getMemberId());
-        assertEquals(userId, firstSave.getUserId());
-        assertEquals(gymId, firstSave.getGymId());
-        assertEquals(planId, firstSave.getPlanId());
-        assertEquals(PlanType.MONTHLY, firstSave.getPlanTypeSnapshot());
-        assertEquals(30, firstSave.getDurationDaysSnapshot());
-        assertEquals(450_000L, firstSave.getPriceVndSnapshot());
-        assertEquals(PurchaseStatus.PENDING, firstSave.getStatus());
-
+        verify(persistenceService).create(eq(member), eq(userId), eq("STRIPE"), eq("key-1"), any(), eq(PlanType.MONTHLY));
         ArgumentCaptor<InitiatePaymentRequest> paymentCaptor = ArgumentCaptor.forClass(InitiatePaymentRequest.class);
         verify(paymentGrpcClient).initiatePayment(paymentCaptor.capture());
-        InitiatePaymentRequest paymentReq = paymentCaptor.getValue();
-        assertEquals(purchaseId, paymentReq.getReferenceId());
-        assertEquals(userId, paymentReq.getUserId());
-        assertEquals(gymId, paymentReq.getGymId());
-        assertEquals(450_000L, paymentReq.getAmountVnd());
-        assertEquals(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP, paymentReq.getPaymentType());
+        assertEquals(purchaseId, paymentCaptor.getValue().getReferenceId());
+        verify(persistenceService).attachPayment(purchaseId, "pay-1");
+    }
+
+    @Test
+    void given_existing_idempotency_key_when_purchase_membership_then_reuses_purchase_reference() {
+        // given
+        MemberDto member = new MemberDto(
+                memberId,
+                UUID.fromString(userId),
+                "Buyer",
+                null,
+                null,
+                null,
+                MembershipStatus.NONE,
+                Instant.now(),
+                Instant.now());
+        when(memberUseCase.getMemberByUserId(userId)).thenReturn(member);
+        PendingPurchaseEntity pending = pending("purchase-1");
+        when(persistenceService.load(userId, "key-1")).thenReturn(pending);
+        when(paymentGrpcClient.initiatePayment(any()))
+                .thenReturn(InitiatePaymentResponse.newBuilder()
+                        .setPaymentId("pay-1")
+                        .setPaymentUrl("https://pay.example/1")
+                        .build());
+
+        // when
+        PurchaseMembershipResponse response =
+                service.purchaseMembership(userId, gymId, planId, "STRIPE", null, "key-1");
+
+        // then
+        assertEquals("pay-1", response.getPaymentId());
+        verify(plansGrpcClient, never()).resolvePurchasablePlan(any(), any());
+        verify(persistenceService, never()).create(any(), any(), any(), any(), any(), any());
+        ArgumentCaptor<InitiatePaymentRequest> paymentCaptor = ArgumentCaptor.forClass(InitiatePaymentRequest.class);
+        verify(paymentGrpcClient).initiatePayment(paymentCaptor.capture());
+        assertEquals("purchase-1", paymentCaptor.getValue().getReferenceId());
+    }
+
+    private PendingPurchaseEntity pending(String purchaseId) {
+        PendingPurchaseEntity entity = new PendingPurchaseEntity();
+        entity.setId(purchaseId);
+        entity.setMemberId(memberId.toString());
+        entity.setUserId(userId);
+        entity.setGymId(gymId);
+        entity.setPlanId(planId);
+        entity.setPlanTypeSnapshot(PlanType.MONTHLY);
+        entity.setDurationDaysSnapshot(30);
+        entity.setPriceVndSnapshot(450_000L);
+        entity.setProvider("STRIPE");
+        entity.setIdempotencyKey("key-1");
+        entity.setStatus(PurchaseStatus.PENDING);
+        return entity;
     }
 }

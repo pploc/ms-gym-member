@@ -35,8 +35,10 @@ issue() {
 }
 
 issue server 'DNS:localhost,DNS:ms-gym-member,IP:127.0.0.1' serverAuth
-issue client-postman 'DNS:postman-local' clientAuth
+issue client-kong 'DNS:kong,URI:spiffe://gym.cluster.local/ns/gym-system/sa/kong' clientAuth
 issue client-identifier 'DNS:ms-gym-identifier,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-identifier' clientAuth
+issue client-checkin 'DNS:ms-gym-checkin,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-checkin' clientAuth
+issue client-notification 'DNS:ms-gym-notification,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-notification' clientAuth
 
 p12() {
   name=$1
@@ -49,8 +51,10 @@ p12() {
     -name "$name" >/dev/null 2>&1
 }
 
-p12 client-postman
+p12 client-kong
 p12 client-identifier
+p12 client-checkin
+p12 client-notification
 
 chmod 600 "$out"/*.key "$out"/*.p12
 
@@ -65,12 +69,14 @@ Server env (or rely on application.yml defaults + bootRun ensureLocalCerts):
   export MEMBER_GRPC_SERVER_KEY=$out/server.key
   export MEMBER_GRPC_CLIENT_CA=$out/ca.crt
 
-Postman public RPCs: client-postman.p12 + x-user-* metadata
-GetMembershipStatusByUserId: client-identifier.p12 (workload)
+End-user RPCs: client-kong.p12 + Kong-verified x-user-* metadata
+GetMembershipStatusByUserId: client-identifier.p12
+ValidateMembership: client-checkin.p12
+ListMembersByStatus: client-notification.p12
 
-grpcurl public example:
+grpcurl end-user example:
   grpcurl -cacert $out/ca.crt \\
-    -cert $out/client-postman.crt -key $out/client-postman.key \\
+    -cert $out/client-kong.crt -key $out/client-kong.key \\
     -H 'x-user-id: u1' -H 'x-user-role: CUSTOMER' -H 'x-membership-status: NONE' \\
     -d '{"memberId":"..."}' localhost:50051 member.v1.MemberService/GetMember
 EOF

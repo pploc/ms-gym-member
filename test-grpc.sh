@@ -1,11 +1,27 @@
 #!/usr/bin/env bash
+# Smoke ListMembers via Kong mTLS identity.
+# Prefer LOCAL_TESTING.md for full matrix.
+set -euo pipefail
+cd "$(dirname "$0")"
 
-# Local test JWT token (no newline breaks)
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature"
+PROTO_DIR="${PROTO_DIR:-../gym-proto/proto}"
+C="${CERT_DIR:-certs/local}"
+: "${MEMBER_HOST:=localhost:50051}"
+: "${USER_ID:=11111111-1111-1111-1111-111111111111}"
+: "${GYM_ID:=22222222-2222-2222-2222-222222222222}"
 
-echo "Sending gRPC request ListMembers to 127.0.0.1:50051..."
-grpcurl -plaintext \
-  -H "authorization: Bearer ${TOKEN}" \
-  -d '{"gym_id": "22222222-2222-2222-2222-222222222222", "page": 0, "limit": 10}' \
-  127.0.0.1:50051 \
-  member.v1.MemberService/ListMembers
+if [[ ! -f "$C/client-kong.crt" ]]; then
+  echo "missing $C/client-kong.crt — run ./gradlew ensureLocalCerts or bootRun first" >&2
+  exit 1
+fi
+
+echo "ListMembers as ADMIN via Kong cert → $MEMBER_HOST"
+grpcurl \
+  -cacert "$C/ca.crt" -cert "$C/client-kong.crt" -key "$C/client-kong.key" \
+  -import-path "$PROTO_DIR" -proto member/v1/member.proto \
+  -H "x-user-id: admin-1" \
+  -H "x-user-role: ADMIN" \
+  -H "x-gym-id: $GYM_ID" \
+  -H "x-membership-status: NONE" \
+  -d "{\"gymId\":\"$GYM_ID\",\"page\":0,\"limit\":10}" \
+  "$MEMBER_HOST" member.v1.MemberService/ListMembers

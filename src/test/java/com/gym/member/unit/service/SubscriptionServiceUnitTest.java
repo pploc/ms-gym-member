@@ -7,6 +7,8 @@ import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.member.adapter.out.persistence.mapper.SubscriptionMapper;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.member.application.service.ExpiryWarningPublisher;
+import com.gym.member.member.application.service.MemberStatusService;
 import com.gym.member.member.application.service.MembershipEventFactory;
 import com.gym.member.member.application.service.SubscriptionActivationService;
 import com.gym.member.member.application.service.SubscriptionExpiryService;
@@ -18,7 +20,6 @@ import com.gym.member.member.domain.exception.MaxPausesExceededException;
 import com.gym.member.member.domain.exception.PlanSwitchNotAllowedException;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.domain.model.PlanType;
-import com.gym.member.shared.outbox.repository.OutboxEventJpaRepository;
 import com.gym.member.shared.outbox.service.OutboxEventWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,13 +28,13 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -57,10 +58,13 @@ class SubscriptionServiceUnitTest {
     private MemberJpaRepository memberRepository;
 
     @Mock
-    private OutboxEventJpaRepository outboxEventRepository;
+    private OutboxEventWriter outboxEventWriter;
 
     @Mock
-    private OutboxEventWriter outboxEventWriter;
+    private MemberStatusService memberStatusService;
+
+    @Mock
+    private ExpiryWarningPublisher expiryWarningPublisher;
 
     @Spy
     private MembershipEventFactory eventFactory = new MembershipEventFactory();
@@ -114,14 +118,32 @@ class SubscriptionServiceUnitTest {
         monthlyTerms = new PurchasedPlanTerms(planId, gymId, PlanType.MONTHLY, 30, 500_000L);
 
         activationService = new SubscriptionActivationService(
-                subscriptionRepository, memberRepository, outboxEventWriter, eventFactory,
-                memberProperties, subscriptionMapper, clock);
+                subscriptionRepository,
+                memberRepository,
+                memberStatusService,
+                outboxEventWriter,
+                eventFactory,
+                memberProperties,
+                subscriptionMapper,
+                clock);
         lifecycleService = new SubscriptionLifecycleService(
-                subscriptionRepository, memberRepository, outboxEventWriter, eventFactory,
-                memberProperties, subscriptionMapper, clock);
+                subscriptionRepository,
+                memberRepository,
+                memberStatusService,
+                outboxEventWriter,
+                eventFactory,
+                memberProperties,
+                subscriptionMapper,
+                clock);
         expiryService = new SubscriptionExpiryService(
-                subscriptionRepository, memberRepository, outboxEventRepository, outboxEventWriter,
-                eventFactory, memberProperties, clock);
+                subscriptionRepository,
+                memberRepository,
+                memberStatusService,
+                expiryWarningPublisher,
+                outboxEventWriter,
+                eventFactory,
+                memberProperties,
+                clock);
     }
 
     @Test
@@ -222,36 +244,47 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
-    void givenNoExpiredSubscriptions_whenProcessExpiredSubscriptions_thenDoesNothing() {
-        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of());
+    void given_no_expired_subscriptions_when_process_expired_subscriptions_then_does_nothing() {
+        // given
+        when(subscriptionRepository.findExpiredForUpdate(eq(MembershipStatus.ACTIVE), any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(List.of());
 
+        // when
         expiryService.processExpiredSubscriptions();
 
+        // then
         verify(subscriptionRepository, never()).save(any());
         verify(outboxEventWriter, never()).write(any(), any(), any(), any());
+        verify(memberStatusService, never()).refresh(any());
     }
 
     @Test
-    void givenNoExpiringSubscriptions_whenProcessExpiringSoonWarnings_thenDoesNothing() {
+    void given_no_expiring_subscriptions_when_process_expiring_soon_warnings_then_does_nothing() {
+        // given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
+        // when
         expiryService.processExpiringSoonWarnings();
 
-        verify(outboxEventWriter, never()).write(any(), any(), any(), any());
+        // then
+        verify(expiryWarningPublisher, never()).publish(any(), any(), any());
     }
 
     @Test
-    void givenMissingMemberForWarning_whenProcessExpiringSoonWarnings_thenSkipsEvent() {
+    void given_missing_member_for_warning_when_process_expiring_soon_warnings_then_skips_event() {
+        // given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
-        when(memberRepository.findAllById(Set.of(memberId))).thenReturn(List.of());
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
+        // when
         expiryService.processExpiringSoonWarnings();
 
-        verify(outboxEventWriter, never()).write(any(), any(), any(), any());
+        // then
+        verify(expiryWarningPublisher, never()).publish(any(), any(), any());
     }
 
     @Test
@@ -382,30 +415,40 @@ class SubscriptionServiceUnitTest {
     }
 
     @Test
-    void givenExpiredActiveSubscriptions_whenProcessExpiredSubscriptions_thenUpdatesStatusToExpiredAndPublishesEvent() {
-        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
-        when(memberRepository.findAllById(Set.of(memberId))).thenReturn(List.of(member));
+    void given_expired_active_subscriptions_when_process_expired_subscriptions_then_updates_status_and_publishes_event() {
+        // given
+        when(subscriptionRepository.findExpiredForUpdate(eq(MembershipStatus.ACTIVE), any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(List.of(activeSub));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
+        // when
         expiryService.processExpiredSubscriptions();
 
+        // then
+        assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
         verify(subscriptionRepository, times(1)).save(activeSub);
+        verify(memberStatusService).refresh(member);
         verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired.v1"), any());
     }
 
     @Test
-    void givenExpiringSoonSubscriptions_whenProcessExpiringSoonWarnings_thenPublishesExpiringSoonEvent() {
+    void given_expiring_soon_subscriptions_when_process_expiring_soon_warnings_then_publishes_deduped_warning() {
+        // given
         MemberProperties.SubscriptionProperties subProps = new MemberProperties.SubscriptionProperties(3, 7, 30);
         when(memberProperties.subscription()).thenReturn(subProps);
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
-        when(memberRepository.findAllById(Set.of(memberId))).thenReturn(List.of(member));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
 
+        // when
         expiryService.processExpiringSoonWarnings();
 
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expiring-soon.v1"), any());
+        // then
+        verify(expiryWarningPublisher, times(1)).publish(eq(memberId), any(), any());
     }
 
     @Test
-    void givenActiveAndPausedSubscriptions_whenSuspendMemberAndSubscription_thenExpiresEveryCurrentSubscription() {
+    void given_active_and_paused_subscriptions_when_suspend_member_and_subscription_then_expires_every_current_subscription() {
+        // given
         SubscriptionEntity pausedSub = new SubscriptionEntity();
         pausedSub.setId(UUID.randomUUID().toString());
         pausedSub.setMemberId(memberId);
@@ -418,14 +461,15 @@ class SubscriptionServiceUnitTest {
         when(memberRepository.findByUserId(userId)).thenReturn(Optional.of(member));
         when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub, pausedSub));
 
+        // when
         expiryService.suspendMemberAndSubscription(userId);
 
-        assertEquals(MembershipStatus.EXPIRED, member.getStatus());
+        // then
         assertEquals(MembershipStatus.EXPIRED, activeSub.getStatus());
         assertEquals(MembershipStatus.EXPIRED, pausedSub.getStatus());
-        verify(memberRepository).save(member);
         verify(subscriptionRepository).save(activeSub);
         verify(subscriptionRepository).save(pausedSub);
+        verify(memberStatusService).refresh(member);
         verify(outboxEventWriter, times(2)).write(eq("member"), eq(memberId), eq("membership.expired.v1"), any());
     }
 

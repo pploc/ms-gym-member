@@ -42,7 +42,8 @@ public class SubscriptionGrpcDelegate {
                     GrpcSecurityContext.getGymId(),
                     request.getPlanId(),
                     request.getProvider(),
-                    request.getDiscountCode());
+                    request.getDiscountCode(),
+                    request.getIdempotencyKey());
         });
     }
 

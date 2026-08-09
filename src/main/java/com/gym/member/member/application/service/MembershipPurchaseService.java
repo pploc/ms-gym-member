@@ -1,12 +1,10 @@
 package com.gym.member.member.application.service;
 
 import com.gym.member.member.adapter.out.persistence.entity.PendingPurchaseEntity;
-import com.gym.member.member.adapter.out.persistence.repository.PendingPurchaseJpaRepository;
 import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.application.port.in.MembershipPurchaseUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.domain.model.PlanType;
-import com.gym.member.member.domain.model.PurchaseStatus;
 import com.gym.member.payment.adapter.out.grpc.PaymentGrpcClient;
 import com.gym.member.plans.adapter.out.grpc.PlansGrpcClient;
 import com.gym.member.shared.mapper.ProtoEnums;
@@ -17,8 +15,10 @@ import com.gym.proto.payment.v1.InitiatePaymentResponse;
 import com.gym.proto.plans.v1.ResolvePurchasablePlanResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -28,60 +28,72 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
     private final MemberUseCase memberUseCase;
     private final PlansGrpcClient plansGrpcClient;
     private final PaymentGrpcClient paymentGrpcClient;
-    private final PendingPurchaseJpaRepository pendingPurchaseRepository;
+    private final PendingPurchasePersistenceService persistenceService;
 
     @Override
-    @Transactional
     public PurchaseMembershipResponse purchaseMembership(
-            String userId, String gymId, String planId, String provider, String discountCode) {
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("userId is required");
-        }
-        if (gymId == null || gymId.isBlank()) {
-            throw new IllegalArgumentException("selected gym_id is required");
-        }
-        if (planId == null || planId.isBlank()) {
-            throw new IllegalArgumentException("plan_id is required");
-        }
-        if (provider == null || provider.isBlank()) {
-            throw new IllegalArgumentException("provider is required");
-        }
+            String userId,
+            String gymId,
+            String planId,
+            String provider,
+            String discountCode,
+            String idempotencyKey) {
+        requireNonBlank(userId, "userId is required");
+        requireNonBlank(gymId, "selected gym_id is required");
+        requireNonBlank(planId, "plan_id is required");
+        requireNonBlank(provider, "provider is required");
+        requireNonBlank(idempotencyKey, "idempotency_key is required");
         if (discountCode != null && !discountCode.isBlank()) {
             throw new IllegalArgumentException("discount codes are not supported until authoritative discount pricing exists");
         }
 
+        String normalizedKey = idempotencyKey.trim();
         MemberDto member = memberUseCase.getMemberByUserId(userId);
-        ResolvePurchasablePlanResponse resolved = plansGrpcClient.resolvePurchasablePlan(planId, gymId);
-        PlanType planType = ProtoEnums.toDomain(resolved.getPlanType());
-
-        PendingPurchaseEntity purchase = new PendingPurchaseEntity();
-        purchase.setMemberId(member.id().toString());
-        purchase.setUserId(userId);
-        purchase.setGymId(resolved.getGymId());
-        purchase.setPlanId(resolved.getPlanId());
-        purchase.setPlanTypeSnapshot(planType);
-        purchase.setDurationDaysSnapshot(resolved.hasDurationDays() ? resolved.getDurationDays() : null);
-        purchase.setPriceVndSnapshot(resolved.getPriceVnd());
-        purchase.setProvider(provider);
-        purchase.setStatus(PurchaseStatus.PENDING);
-        PendingPurchaseEntity saved = pendingPurchaseRepository.save(purchase);
+        PendingPurchaseEntity purchase;
+        try {
+            purchase = persistenceService.load(userId, normalizedKey);
+            requireSameRequest(purchase, member, gymId, planId, provider);
+        } catch (com.gym.common.error.NotFoundException ignored) {
+            ResolvePurchasablePlanResponse resolved = plansGrpcClient.resolvePurchasablePlan(planId, gymId);
+            PlanType planType = ProtoEnums.toDomain(resolved.getPlanType());
+            try {
+                purchase = persistenceService.create(member, userId, provider, normalizedKey, resolved, planType);
+            } catch (DataIntegrityViolationException concurrentCreate) {
+                purchase = persistenceService.load(userId, normalizedKey);
+                PendingPurchasePersistenceService.requireSameIntent(purchase, member, provider, resolved, planType);
+            }
+        }
 
         InitiatePaymentResponse payment = paymentGrpcClient.initiatePayment(InitiatePaymentRequest.newBuilder()
-                .setGymId(resolved.getGymId())
+                .setGymId(purchase.getGymId())
                 .setPaymentType(PaymentType.PAYMENT_TYPE_MEMBERSHIP)
-                .setReferenceId(saved.getId())
-                .setProvider(provider)
+                .setReferenceId(purchase.getId())
+                .setProvider(purchase.getProvider())
                 .setUserId(userId)
-                .setAmountVnd(resolved.getPriceVnd())
+                .setAmountVnd(purchase.getPriceVndSnapshot())
                 .build());
 
-        saved.setPaymentId(payment.getPaymentId());
-        pendingPurchaseRepository.save(saved);
-
-        log.info("Created pending purchase {} for member {} plan {}", saved.getId(), member.id(), resolved.getPlanId());
+        persistenceService.attachPayment(purchase.getId(), payment.getPaymentId());
+        log.info("Created or reused pending purchase {} for member {} plan {}", purchase.getId(), member.id(), purchase.getPlanId());
         return PurchaseMembershipResponse.newBuilder()
                 .setPaymentId(payment.getPaymentId())
                 .setPaymentUrl(payment.getPaymentUrl())
                 .build();
+    }
+
+    private static void requireSameRequest(
+            PendingPurchaseEntity purchase, MemberDto member, String gymId, String planId, String provider) {
+        if (!Objects.equals(purchase.getMemberId(), member.id().toString())
+                || !Objects.equals(purchase.getGymId(), gymId)
+                || !Objects.equals(purchase.getPlanId(), planId)
+                || !Objects.equals(purchase.getProvider(), provider)) {
+            throw new IllegalArgumentException("Idempotency key was already used for a different purchase");
+        }
+    }
+
+    private static void requireNonBlank(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(message);
+        }
     }
 }

@@ -5,6 +5,7 @@ import com.gym.common.pagination.NormalPage;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.member.adapter.out.persistence.mapper.MemberMapper;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
+import com.gym.member.member.adapter.out.persistence.specification.MemberSpecifications;
 import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.domain.model.MembershipStatus;
@@ -87,9 +88,8 @@ public class MemberService implements MemberUseCase {
     public NormalPage<MemberDto> listMembers(String gymId, int page, int limit) {
         int pageSize = limit > 0 ? Math.min(limit, 100) : 10;
         PageRequest pageRequest = PageRequest.of(Math.max(0, page), pageSize);
-        Page<MemberEntity> memberPage = (gymId != null && !gymId.isBlank())
-                ? memberRepository.findDistinctBySubscriptionGymId(gymId, pageRequest)
-                : memberRepository.findAll(pageRequest);
+        Page<MemberEntity> memberPage = memberRepository.findAll(
+                MemberSpecifications.hasSubscriptionAtGym(gymId), pageRequest);
 
         return new NormalPage<>(
                 memberPage.getContent().stream().map(memberMapper::toDto).toList(),
@@ -104,9 +104,10 @@ public class MemberService implements MemberUseCase {
     @Transactional(readOnly = true)
     public List<MemberDto> listMembersByStatus(MembershipStatus status, List<String> gymIds) {
         PageRequest safetyLimit = PageRequest.of(0, MAX_UNBOUNDED_RESULT_LIMIT);
-        List<MemberEntity> entities = (gymIds != null && !gymIds.isEmpty())
-                ? memberRepository.findDistinctBySubscriptionStatusAndGymIdIn(status, gymIds, safetyLimit)
-                : memberRepository.findByStatus(status, safetyLimit);
+        var specification = gymIds != null && !gymIds.isEmpty()
+                ? MemberSpecifications.hasSubscriptionWithStatusAtGymIn(status, gymIds)
+                : MemberSpecifications.hasStatus(status);
+        List<MemberEntity> entities = memberRepository.findAll(specification, safetyLimit).getContent();
 
         if (entities.size() >= MAX_UNBOUNDED_RESULT_LIMIT) {
             log.warn(
