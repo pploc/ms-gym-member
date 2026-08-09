@@ -9,10 +9,12 @@ import com.gym.member.member.domain.model.PlanType;
 import com.gym.member.member.domain.model.PurchaseStatus;
 import com.gym.member.payment.adapter.out.grpc.PaymentGrpcClient;
 import com.gym.member.plans.adapter.out.grpc.PlansGrpcClient;
-import com.gym.proto.member.v1.PurchaseResponse;
+import com.gym.member.shared.mapper.ProtoEnums;
+import com.gym.proto.common.v1.PaymentType;
+import com.gym.proto.member.v1.PurchaseMembershipResponse;
 import com.gym.proto.payment.v1.InitiatePaymentRequest;
 import com.gym.proto.payment.v1.InitiatePaymentResponse;
-import com.gym.proto.plans.v1.ResolvedPlanResponse;
+import com.gym.proto.plans.v1.ResolvePurchasablePlanResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +32,7 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
 
     @Override
     @Transactional
-    public PurchaseResponse purchaseMembership(
+    public PurchaseMembershipResponse purchaseMembership(
             String userId, String gymId, String planId, String provider, String discountCode) {
         if (userId == null || userId.isBlank()) {
             throw new IllegalArgumentException("userId is required");
@@ -49,14 +51,15 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
         }
 
         MemberDto member = memberUseCase.getMemberByUserId(userId);
-        ResolvedPlanResponse resolved = plansGrpcClient.resolvePurchasablePlan(planId, gymId);
+        ResolvePurchasablePlanResponse resolved = plansGrpcClient.resolvePurchasablePlan(planId, gymId);
+        PlanType planType = ProtoEnums.toDomain(resolved.getPlanType());
 
         PendingPurchaseEntity purchase = new PendingPurchaseEntity();
         purchase.setMemberId(member.id().toString());
         purchase.setUserId(userId);
         purchase.setGymId(resolved.getGymId());
         purchase.setPlanId(resolved.getPlanId());
-        purchase.setPlanTypeSnapshot(PlanType.valueOf(resolved.getPlanType()));
+        purchase.setPlanTypeSnapshot(planType);
         purchase.setDurationDaysSnapshot(resolved.hasDurationDays() ? resolved.getDurationDays() : null);
         purchase.setPriceVndSnapshot(resolved.getPriceVnd());
         purchase.setProvider(provider);
@@ -65,7 +68,7 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
 
         InitiatePaymentResponse payment = paymentGrpcClient.initiatePayment(InitiatePaymentRequest.newBuilder()
                 .setGymId(resolved.getGymId())
-                .setPaymentType("MEMBERSHIP")
+                .setPaymentType(PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                 .setReferenceId(saved.getId())
                 .setProvider(provider)
                 .setUserId(userId)
@@ -76,7 +79,7 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
         pendingPurchaseRepository.save(saved);
 
         log.info("Created pending purchase {} for member {} plan {}", saved.getId(), member.id(), resolved.getPlanId());
-        return PurchaseResponse.newBuilder()
+        return PurchaseMembershipResponse.newBuilder()
                 .setPaymentId(payment.getPaymentId())
                 .setPaymentUrl(payment.getPaymentUrl())
                 .build();

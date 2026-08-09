@@ -41,12 +41,12 @@ class OutboxEventWriterUnitTest {
                 .setMemberId("mem-1")
                 .setUserId("user-1")
                 .setGymId("gym-1")
-                .setPlanType("MONTHLY")
+                .setPlanType(com.gym.proto.common.v1.PlanType.PLAN_TYPE_MONTHLY)
                 .setStartDate("2026-08-01")
                 .setEndDate("2026-09-01")
                 .build();
 
-        UUID eventId = writer.write("member", "mem-1", "membership.activated", event);
+        UUID eventId = writer.write("member", "mem-1", "membership.activated.v1", event);
 
         assertNotNull(eventId);
         ArgumentCaptor<OutboxEventEntity> captor = ArgumentCaptor.forClass(OutboxEventEntity.class);
@@ -58,7 +58,7 @@ class OutboxEventWriterUnitTest {
         assertEquals("mem-1", saved.getAggregateId());
         assertEquals("MembershipActivatedEvent", saved.getEventType());
         assertEquals("events.v1.MembershipActivatedEvent", saved.getPayloadType());
-        assertEquals("membership.activated", saved.getTopic());
+        assertEquals("membership.activated.v1", saved.getTopic());
         assertEquals(OutboxEventEntity.OutboxStatus.PENDING, saved.getStatus());
         assertEquals(Instant.now(clock), saved.getCreatedAt());
     }

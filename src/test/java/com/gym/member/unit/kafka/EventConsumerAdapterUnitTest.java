@@ -85,7 +85,7 @@ class EventConsumerAdapterUnitTest {
         PaymentCompletedEvent payload = PaymentCompletedEvent.newBuilder()
                 .setPaymentId(UUID.randomUUID().toString())
                 .setUserId(userId)
-                .setType("MEMBERSHIP")
+                .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                 .setReferenceId(UUID.randomUUID().toString())
                 .build();
         EventConsumerAdapter adapter = adapterDecoding(payload);

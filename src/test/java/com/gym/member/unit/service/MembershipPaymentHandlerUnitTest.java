@@ -75,9 +75,9 @@ class MembershipPaymentHandlerUnitTest {
 
     @Test
     void givenMembershipType_whenSupports_thenReturnsTrueOnlyForMembership() {
-        assertTrue(handler.supports("MEMBERSHIP"));
-        assertTrue(handler.supports("membership"));
-        assertFalse(handler.supports("OTHER"));
+        assertTrue(handler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP));
+        assertTrue(handler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP));
+        assertFalse(handler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_TRAINER_BOOKING));
         assertFalse(handler.supports(null));
     }
 
@@ -86,7 +86,7 @@ class MembershipPaymentHandlerUnitTest {
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setUserId(userId)
                 .setReferenceId(purchaseId)
-                .setType("MEMBERSHIP")
+                .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
@@ -114,7 +114,7 @@ class MembershipPaymentHandlerUnitTest {
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setUserId(userId)
                 .setReferenceId(purchaseId)
-                .setType("MEMBERSHIP")
+                .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
@@ -132,7 +132,7 @@ class MembershipPaymentHandlerUnitTest {
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setUserId("")
                 .setReferenceId(purchaseId)
-                .setType("MEMBERSHIP")
+                .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)

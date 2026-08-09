@@ -16,9 +16,10 @@ import com.gym.proto.member.v1.GetMemberRequest;
 import com.gym.proto.member.v1.GetMembershipStatusByUserIdRequest;
 import com.gym.proto.member.v1.ListMembersRequest;
 import com.gym.proto.member.v1.ListMembersResponse;
-import com.gym.proto.member.v1.MemberResponse;
+import com.gym.proto.member.v1.GetMemberResponse;
+import com.gym.proto.member.v1.UpdateProfileResponse;
 import com.gym.proto.member.v1.MemberServiceGrpc;
-import com.gym.proto.member.v1.MembershipResponse;
+import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.UpdateProfileRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
@@ -155,11 +156,11 @@ class MemberGrpcIntegrationTest {
     }
 
     @Test
-    void givenExistingMember_whenGetMember_thenReturnsMemberResponse() {
+    void givenExistingMember_whenGetMember_thenReturnsGetMemberResponse() {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
-        MemberResponse response = stub.getMember(request);
+        GetMemberResponse response = stub.getMember(request);
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(memberId);
@@ -187,7 +188,7 @@ class MemberGrpcIntegrationTest {
                 .build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
-        MemberResponse response = stub.updateProfile(request);
+        UpdateProfileResponse response = stub.updateProfile(request);
 
         assertThat(response).isNotNull();
         assertThat(response.getFullName()).isEqualTo("Jane Real DB");
@@ -276,7 +277,7 @@ class MemberGrpcIntegrationTest {
                 .setGymId(gymId)
                 .build();
 
-        MembershipResponse response = blockingStub.getMembershipStatusByUserId(request);
+        com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse response = blockingStub.getMembershipStatusByUserId(request);
         assertThat(response).isNotNull();
         assertThat(response.getMemberId()).isEqualTo(memberId);
         assertThat(response.getStatus()).isEqualTo("ACTIVE");

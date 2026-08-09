@@ -3,7 +3,7 @@ package com.gym.member.plans.adapter.out.grpc;
 import com.gym.member.config.MemberProperties;
 import com.gym.proto.plans.v1.PlansServiceGrpc;
 import com.gym.proto.plans.v1.ResolvePurchasablePlanRequest;
-import com.gym.proto.plans.v1.ResolvedPlanResponse;
+import com.gym.proto.plans.v1.ResolvePurchasablePlanResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
@@ -56,7 +56,7 @@ public class PlansGrpcClient implements AutoCloseable {
         this.stub = PlansServiceGrpc.newBlockingStub(channel);
     }
 
-    public ResolvedPlanResponse resolvePurchasablePlan(String planId, String gymId) {
+    public ResolvePurchasablePlanResponse resolvePurchasablePlan(String planId, String gymId) {
         if (stub == null) {
             throw Status.UNAVAILABLE.withDescription("Plans service is not configured").asRuntimeException();
         }

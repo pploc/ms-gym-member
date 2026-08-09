@@ -4,20 +4,24 @@ import com.gym.common.grpc.security.RequirePolicy;
 import com.gym.common.grpc.security.RequireRole;
 import com.gym.common.grpc.security.RpcPolicyKind;
 import com.gym.proto.member.v1.GetMemberRequest;
+import com.gym.proto.member.v1.GetMemberResponse;
 import com.gym.proto.member.v1.GetMembershipStatusByUserIdRequest;
+import com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse;
 import com.gym.proto.member.v1.GetMembershipStatusRequest;
+import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.ListMembersByStatusRequest;
 import com.gym.proto.member.v1.ListMembersByStatusResponse;
 import com.gym.proto.member.v1.ListMembersRequest;
 import com.gym.proto.member.v1.ListMembersResponse;
-import com.gym.proto.member.v1.MemberResponse;
 import com.gym.proto.member.v1.MemberServiceGrpc;
-import com.gym.proto.member.v1.MembershipResponse;
 import com.gym.proto.member.v1.PauseMembershipRequest;
+import com.gym.proto.member.v1.PauseMembershipResponse;
 import com.gym.proto.member.v1.PurchaseMembershipRequest;
-import com.gym.proto.member.v1.PurchaseResponse;
+import com.gym.proto.member.v1.PurchaseMembershipResponse;
 import com.gym.proto.member.v1.ResumeMembershipRequest;
+import com.gym.proto.member.v1.ResumeMembershipResponse;
 import com.gym.proto.member.v1.UpdateProfileRequest;
+import com.gym.proto.member.v1.UpdateProfileResponse;
 import com.gym.proto.member.v1.ValidateMembershipRequest;
 import com.gym.proto.member.v1.ValidateMembershipResponse;
 import io.grpc.stub.StreamObserver;
@@ -33,13 +37,13 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
 
     @Override
     @RequireRole("CUSTOMER")
-    public void getMember(GetMemberRequest request, StreamObserver<MemberResponse> responseObserver) {
+    public void getMember(GetMemberRequest request, StreamObserver<GetMemberResponse> responseObserver) {
         memberGrpcDelegate.getMember(request, responseObserver);
     }
 
     @Override
     @RequireRole("CUSTOMER")
-    public void updateProfile(UpdateProfileRequest request, StreamObserver<MemberResponse> responseObserver) {
+    public void updateProfile(UpdateProfileRequest request, StreamObserver<UpdateProfileResponse> responseObserver) {
         memberGrpcDelegate.updateProfile(request, responseObserver);
     }
 
@@ -52,33 +56,33 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     @Override
     @RequireRole("CUSTOMER")
     public void purchaseMembership(
-            PurchaseMembershipRequest request, StreamObserver<PurchaseResponse> responseObserver) {
+            PurchaseMembershipRequest request, StreamObserver<PurchaseMembershipResponse> responseObserver) {
         subscriptionGrpcDelegate.purchaseMembership(request, responseObserver);
     }
 
     @Override
     @RequireRole("CUSTOMER")
-    public void pauseMembership(PauseMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
+    public void pauseMembership(PauseMembershipRequest request, StreamObserver<PauseMembershipResponse> responseObserver) {
         subscriptionGrpcDelegate.pauseMembership(request, responseObserver);
     }
 
     @Override
     @RequireRole("CUSTOMER")
-    public void resumeMembership(ResumeMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
+    public void resumeMembership(ResumeMembershipRequest request, StreamObserver<ResumeMembershipResponse> responseObserver) {
         subscriptionGrpcDelegate.resumeMembership(request, responseObserver);
     }
 
     @Override
     @RequireRole("CUSTOMER")
     public void getMembershipStatus(
-            GetMembershipStatusRequest request, StreamObserver<MembershipResponse> responseObserver) {
+            GetMembershipStatusRequest request, StreamObserver<GetMembershipStatusResponse> responseObserver) {
         subscriptionGrpcDelegate.getMembershipStatus(request, responseObserver);
     }
 
     @Override
     @RequirePolicy(RpcPolicyKind.INTERNAL_WORKLOAD)
     public void getMembershipStatusByUserId(
-            GetMembershipStatusByUserIdRequest request, StreamObserver<MembershipResponse> responseObserver) {
+            GetMembershipStatusByUserIdRequest request, StreamObserver<GetMembershipStatusByUserIdResponse> responseObserver) {
         subscriptionGrpcDelegate.getMembershipStatusByUserId(request, responseObserver);
     }
 

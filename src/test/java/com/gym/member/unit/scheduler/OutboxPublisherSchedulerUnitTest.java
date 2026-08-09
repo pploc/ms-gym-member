@@ -52,7 +52,7 @@ class OutboxPublisherSchedulerUnitTest {
         outboxEvent.setAggregateId("agg-123");
         outboxEvent.setEventType("MembershipActivatedEvent");
         outboxEvent.setPayloadType("events.v1.MembershipActivatedEvent");
-        outboxEvent.setTopic("membership.activated");
+        outboxEvent.setTopic("membership.activated.v1");
         outboxEvent.setPayload("payload-json");
         outboxEvent.setStatus(OutboxEventEntity.OutboxStatus.PENDING);
         outboxEvent.setCreatedAt(Instant.now());
@@ -74,7 +74,7 @@ class OutboxPublisherSchedulerUnitTest {
         scheduler.processOutboxEvents();
 
         // Then
-        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("agg-123"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
+        verify(eventPublisher, times(1)).publish(eq("membership.activated.v1"), eq("agg-123"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
         verify(outboxRelayService, times(1)).markPublished(outboxEvent.getId());
     }
 
@@ -89,7 +89,7 @@ class OutboxPublisherSchedulerUnitTest {
         scheduler.processOutboxEvents();
 
         // Then
-        verify(eventPublisher, times(1)).publish(eq("membership.activated"), eq("custom-key-456"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
+        verify(eventPublisher, times(1)).publish(eq("membership.activated.v1"), eq("custom-key-456"), eq(mockMessage), eq(outboxEvent.getId().toString()), anyMap());
         verify(outboxRelayService, times(1)).markPublished(outboxEvent.getId());
     }
 

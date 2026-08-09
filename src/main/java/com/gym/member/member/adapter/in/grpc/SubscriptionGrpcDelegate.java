@@ -8,12 +8,15 @@ import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.proto.member.v1.GetMembershipStatusByUserIdRequest;
+import com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse;
 import com.gym.proto.member.v1.GetMembershipStatusRequest;
-import com.gym.proto.member.v1.MembershipResponse;
+import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.PauseMembershipRequest;
+import com.gym.proto.member.v1.PauseMembershipResponse;
 import com.gym.proto.member.v1.PurchaseMembershipRequest;
-import com.gym.proto.member.v1.PurchaseResponse;
+import com.gym.proto.member.v1.PurchaseMembershipResponse;
 import com.gym.proto.member.v1.ResumeMembershipRequest;
+import com.gym.proto.member.v1.ResumeMembershipResponse;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -30,7 +33,7 @@ public class SubscriptionGrpcDelegate {
     private final MembershipPurchaseUseCase membershipPurchaseUseCase;
     private final SubscriptionMapper subscriptionMapper;
 
-    public void purchaseMembership(PurchaseMembershipRequest request, StreamObserver<PurchaseResponse> responseObserver) {
+    public void purchaseMembership(PurchaseMembershipRequest request, StreamObserver<PurchaseMembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             MemberDto member = memberUseCase.getMemberByUserId(GrpcSecurityContext.getUserId());
             requireSelf(member);
@@ -43,40 +46,40 @@ public class SubscriptionGrpcDelegate {
         });
     }
 
-    public void pauseMembership(PauseMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
+    public void pauseMembership(PauseMembershipRequest request, StreamObserver<PauseMembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireSelf(memberUseCase.getMember(request.getMemberId()));
             SubscriptionDto dto = subscriptionLifecycleUseCase.pauseSubscription(
                     request.getMemberId(), GrpcSecurityContext.getGymId());
-            return subscriptionMapper.toResponse(dto);
+            return subscriptionMapper.toPauseResponse(dto);
         });
     }
 
-    public void resumeMembership(ResumeMembershipRequest request, StreamObserver<MembershipResponse> responseObserver) {
+    public void resumeMembership(ResumeMembershipRequest request, StreamObserver<ResumeMembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireSelf(memberUseCase.getMember(request.getMemberId()));
             SubscriptionDto dto = subscriptionLifecycleUseCase.resumeSubscription(
                     request.getMemberId(), GrpcSecurityContext.getGymId());
-            return subscriptionMapper.toResponse(dto);
+            return subscriptionMapper.toResumeResponse(dto);
         });
     }
 
     public void getMembershipStatus(
-            GetMembershipStatusRequest request, StreamObserver<MembershipResponse> responseObserver) {
+            GetMembershipStatusRequest request, StreamObserver<GetMembershipStatusResponse> responseObserver) {
         execute(responseObserver, () -> {
             requireSelf(memberUseCase.getMember(request.getMemberId()));
             SubscriptionDto dto = subscriptionLifecycleUseCase.getActiveSubscription(
                     request.getMemberId(), GrpcSecurityContext.getGymId());
-            return subscriptionMapper.toResponse(dto);
+            return subscriptionMapper.toStatusResponse(dto);
         });
     }
 
     public void getMembershipStatusByUserId(
-            GetMembershipStatusByUserIdRequest request, StreamObserver<MembershipResponse> responseObserver) {
+            GetMembershipStatusByUserIdRequest request, StreamObserver<GetMembershipStatusByUserIdResponse> responseObserver) {
         execute(responseObserver, () -> {
             SubscriptionDto dto = subscriptionLifecycleUseCase.getMembershipStatusByUserIdAndGymId(
                     request.getUserId(), request.getGymId());
-            return subscriptionMapper.toResponse(dto);
+            return subscriptionMapper.toStatusByUserIdResponse(dto);
         });
     }
 }

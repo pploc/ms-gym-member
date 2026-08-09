@@ -2,6 +2,7 @@ package com.gym.member.member.application.service;
 
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
+import com.gym.member.shared.mapper.ProtoEnums;
 import com.gym.proto.events.v1.MembershipActivatedEvent;
 import com.gym.proto.events.v1.MembershipExpiredEvent;
 import com.gym.proto.events.v1.MembershipExpiringSoonEvent;
@@ -30,7 +31,7 @@ public class MembershipEventFactory {
         return MembershipActivatedEvent.newBuilder()
                 .setMemberId(member.getId())
                 .setUserId(member.getUserId())
-                .setPlanType(sub.getPlanTypeSnapshot().name())
+                .setPlanType(ProtoEnums.toProto(sub.getPlanTypeSnapshot()))
                 .setStartDate(sub.getStartDate().toString())
                 .setEndDate(sub.getEndDate() != null ? sub.getEndDate().toString() : "")
                 .setGymId(sub.getGymId())
@@ -62,7 +63,7 @@ public class MembershipEventFactory {
         return MembershipExpiringSoonEvent.newBuilder()
                 .setMemberId(member.getId())
                 .setEndDate(sub.getEndDate() != null ? sub.getEndDate().toString() : "")
-                .setPlanType(sub.getPlanTypeSnapshot().name())
+                .setPlanType(ProtoEnums.toProto(sub.getPlanTypeSnapshot()))
                 .setGymId(sub.getGymId())
                 .build();
     }

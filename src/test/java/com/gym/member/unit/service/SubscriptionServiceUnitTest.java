@@ -140,7 +140,7 @@ class SubscriptionServiceUnitTest {
 
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.activated"), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.activated.v1"), any());
     }
 
     @Test
@@ -154,7 +154,7 @@ class SubscriptionServiceUnitTest {
 
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.activated"), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.activated.v1"), any());
     }
 
     @Test
@@ -278,7 +278,7 @@ class SubscriptionServiceUnitTest {
         assertNotNull(result);
         assertEquals(MembershipStatus.PAUSED, result.status());
         assertEquals(1, result.pauseCount());
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.paused"), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.paused.v1"), any());
     }
 
     @Test
@@ -341,7 +341,7 @@ class SubscriptionServiceUnitTest {
 
         assertNotNull(result);
         assertEquals(MembershipStatus.ACTIVE, result.status());
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.resumed"), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.resumed.v1"), any());
     }
 
     @Test
@@ -389,7 +389,7 @@ class SubscriptionServiceUnitTest {
         expiryService.processExpiredSubscriptions();
 
         verify(subscriptionRepository, times(1)).save(activeSub);
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expired.v1"), any());
     }
 
     @Test
@@ -401,7 +401,7 @@ class SubscriptionServiceUnitTest {
 
         expiryService.processExpiringSoonWarnings();
 
-        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expiring-soon"), any());
+        verify(outboxEventWriter, times(1)).write(eq("member"), eq(memberId), eq("membership.expiring-soon.v1"), any());
     }
 
     @Test
@@ -426,7 +426,7 @@ class SubscriptionServiceUnitTest {
         verify(memberRepository).save(member);
         verify(subscriptionRepository).save(activeSub);
         verify(subscriptionRepository).save(pausedSub);
-        verify(outboxEventWriter, times(2)).write(eq("member"), eq(memberId), eq("membership.expired"), any());
+        verify(outboxEventWriter, times(2)).write(eq("member"), eq(memberId), eq("membership.expired.v1"), any());
     }
 
     @Test

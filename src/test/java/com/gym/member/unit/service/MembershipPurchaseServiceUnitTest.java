@@ -10,10 +10,10 @@ import com.gym.member.member.domain.model.PlanType;
 import com.gym.member.member.domain.model.PurchaseStatus;
 import com.gym.member.payment.adapter.out.grpc.PaymentGrpcClient;
 import com.gym.member.plans.adapter.out.grpc.PlansGrpcClient;
-import com.gym.proto.member.v1.PurchaseResponse;
+import com.gym.proto.member.v1.PurchaseMembershipResponse;
 import com.gym.proto.payment.v1.InitiatePaymentRequest;
 import com.gym.proto.payment.v1.InitiatePaymentResponse;
-import com.gym.proto.plans.v1.ResolvedPlanResponse;
+import com.gym.proto.plans.v1.ResolvePurchasablePlanResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -105,10 +105,10 @@ class MembershipPurchaseServiceUnitTest {
                 MembershipStatus.NONE, Instant.now(), Instant.now());
         when(memberUseCase.getMemberByUserId(userId)).thenReturn(member);
         when(plansGrpcClient.resolvePurchasablePlan(planId, gymId)).thenReturn(
-                ResolvedPlanResponse.newBuilder()
+                ResolvePurchasablePlanResponse.newBuilder()
                         .setPlanId(planId)
                         .setGymId(gymId)
-                        .setPlanType("MONTHLY")
+                        .setPlanType(com.gym.proto.common.v1.PlanType.PLAN_TYPE_MONTHLY)
                         .setDurationDays(30)
                         .setPriceVnd(450_000L)
                         .build());
@@ -127,7 +127,7 @@ class MembershipPurchaseServiceUnitTest {
                         .setPaymentUrl("https://pay.example/1")
                         .build());
 
-        PurchaseResponse response = service.purchaseMembership(userId, gymId, planId, "STRIPE", "");
+        PurchaseMembershipResponse response = service.purchaseMembership(userId, gymId, planId, "STRIPE", "");
 
         assertEquals("pay-1", response.getPaymentId());
         assertEquals("https://pay.example/1", response.getPaymentUrl());
@@ -151,6 +151,6 @@ class MembershipPurchaseServiceUnitTest {
         assertEquals(userId, paymentReq.getUserId());
         assertEquals(gymId, paymentReq.getGymId());
         assertEquals(450_000L, paymentReq.getAmountVnd());
-        assertEquals("MEMBERSHIP", paymentReq.getPaymentType());
+        assertEquals(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP, paymentReq.getPaymentType());
     }
 }

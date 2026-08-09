@@ -5,6 +5,7 @@ import com.gym.common.grpc.interceptor.ExceptionInterceptor;
 import com.gym.common.grpc.interceptor.LoggingInterceptor;
 import com.gym.common.grpc.interceptor.MetricsInterceptor;
 import com.gym.common.grpc.interceptor.TracingInterceptor;
+import com.gym.common.grpc.interceptor.ValidationInterceptor;
 import com.gym.common.grpc.interceptor.GrpcMethodRegistry;
 import com.gym.common.grpc.security.WorkloadIdentityVerifier;
 import com.gym.member.member.adapter.in.grpc.MemberGrpcHandler;
@@ -105,14 +106,16 @@ public class GrpcConfig {
             ExceptionInterceptor exceptionInterceptor,
             LoggingInterceptor loggingInterceptor,
             TracingInterceptor tracingInterceptor,
-            MetricsInterceptor metricsInterceptor) {
+            MetricsInterceptor metricsInterceptor,
+            ValidationInterceptor validationInterceptor) {
         this.memberGrpcHandler = memberGrpcHandler;
         this.interceptors = List.of(
                 tracingInterceptor,
                 loggingInterceptor,
                 metricsInterceptor,
                 exceptionInterceptor,
-                authServerInterceptor
+                authServerInterceptor,
+                validationInterceptor
         );
     }
 

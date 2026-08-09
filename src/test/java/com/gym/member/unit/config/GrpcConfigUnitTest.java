@@ -29,13 +29,14 @@ class GrpcConfigUnitTest {
             mock(com.gym.common.grpc.interceptor.ExceptionInterceptor.class),
             mock(com.gym.common.grpc.interceptor.LoggingInterceptor.class),
             mock(com.gym.common.grpc.interceptor.TracingInterceptor.class),
-            mock(com.gym.common.grpc.interceptor.MetricsInterceptor.class)
+            mock(com.gym.common.grpc.interceptor.MetricsInterceptor.class),
+            mock(com.gym.common.grpc.interceptor.ValidationInterceptor.class)
     );
 
     @Test
     void givenIdentifierDnsSan_whenVerifyWorkloadIdentity_thenAccepts() throws Exception {
         // Given
-        WorkloadIdentityVerifier verifier = config.workloadIdentityVerifier();
+        WorkloadIdentityVerifier verifier = GrpcConfig.workloadIdentityVerifier();
         ServerCall<?, ?> call = callWithSans(List.of(List.of(2, "ms-gym-identifier")));
 
         // When
@@ -48,7 +49,7 @@ class GrpcConfigUnitTest {
     @Test
     void givenIdentifierSpiffeSan_whenVerifyWorkloadIdentity_thenAccepts() throws Exception {
         // Given
-        WorkloadIdentityVerifier verifier = config.workloadIdentityVerifier();
+        WorkloadIdentityVerifier verifier = GrpcConfig.workloadIdentityVerifier();
         ServerCall<?, ?> call = callWithSans(List.of(
                 List.of(6, "spiffe://gym.cluster.local/ns/default/sa/ms-gym-identifier")
         ));
@@ -63,7 +64,7 @@ class GrpcConfigUnitTest {
     @Test
     void givenGymSystemIdentifierSpiffeSan_whenVerifyWorkloadIdentity_thenAccepts() throws Exception {
         // Given
-        WorkloadIdentityVerifier verifier = config.workloadIdentityVerifier();
+        WorkloadIdentityVerifier verifier = GrpcConfig.workloadIdentityVerifier();
         ServerCall<?, ?> call = callWithSans(List.of(
                 List.of(6, "spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-identifier")
         ));
@@ -78,7 +79,7 @@ class GrpcConfigUnitTest {
     @Test
     void givenMissingTlsSession_whenVerifyWorkloadIdentity_thenRejects() {
         // Given
-        WorkloadIdentityVerifier verifier = config.workloadIdentityVerifier();
+        WorkloadIdentityVerifier verifier = GrpcConfig.workloadIdentityVerifier();
         ServerCall<?, ?> call = mock(ServerCall.class);
         when(call.getAttributes()).thenReturn(Attributes.EMPTY);
 
@@ -120,7 +121,7 @@ class GrpcConfigUnitTest {
     @Test
     void givenWrongOrNonIdentitySan_whenVerifyWorkloadIdentity_thenRejects() throws Exception {
         // Given
-        WorkloadIdentityVerifier verifier = config.workloadIdentityVerifier();
+        WorkloadIdentityVerifier verifier = GrpcConfig.workloadIdentityVerifier();
         ServerCall<?, ?> call = callWithSans(List.of(
                 List.of(2, "ms-gym-payment"),
                 List.of(1, "ms-gym-identifier")

@@ -78,11 +78,11 @@ class MemberEventProcessingServiceUnitTest {
     @Test
     void givenUnsupportedPaymentType_whenProcessPaymentCompleted_thenReturnsSkippedResult() {
         when(idempotencyService.claimEvent(eventId, "payment.completed")).thenReturn(true);
-        when(membershipPaymentHandler.supports("MERCHANDISE")).thenReturn(false);
+        when(membershipPaymentHandler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_TRAINER_BOOKING)).thenReturn(false);
 
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setPaymentId("pay-1")
-                .setType("MERCHANDISE")
+                .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_TRAINER_BOOKING)
                 .build();
 
         MemberEventProcessingService.EventProcessingResult result = service.processPaymentCompleted(eventId, "payment.completed", event, "user-123");
@@ -94,11 +94,11 @@ class MemberEventProcessingServiceUnitTest {
     @Test
     void givenSupportedPaymentType_whenProcessPaymentCompleted_thenInvokesStrategyAndReturnsProcessed() {
         when(idempotencyService.claimEvent(eventId, "payment.completed")).thenReturn(true);
-        when(membershipPaymentHandler.supports("MEMBERSHIP")).thenReturn(true);
+        when(membershipPaymentHandler.supports(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)).thenReturn(true);
 
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
                 .setPaymentId("pay-1")
-                .setType("MEMBERSHIP")
+                .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                 .setUserId("user-123")
                 .setReferenceId("plan-1")
                 .build();

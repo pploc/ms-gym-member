@@ -63,13 +63,13 @@ def grpcVersion = '1.68.1'
 def testcontainersVersion = '1.20.1'
 
 dependencies {
-    implementation 'com.gym:common-java:2.0.2'
-    implementation 'com.gym.proto:gym-proto-java:3.0.0'
+    implementation 'com.gym:common-java:2.1.0'
+    implementation 'com.gym.proto:gym-proto-java:4.0.0'
     implementation('com.google.protobuf:protobuf-java') {
-        version { strictly '3.25.4' }
+        version { strictly '4.30.1' }
     }
     implementation('com.google.protobuf:protobuf-java-util') {
-        version { strictly '3.25.4' }
+        version { strictly '4.30.1' }
     }
     implementation('com.google.api.grpc:proto-google-common-protos') {
         version { strictly '2.22.1' }

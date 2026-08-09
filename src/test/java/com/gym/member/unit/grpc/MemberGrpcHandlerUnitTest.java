@@ -22,11 +22,14 @@ import com.gym.proto.member.v1.ListMembersByStatusRequest;
 import com.gym.proto.member.v1.ListMembersByStatusResponse;
 import com.gym.proto.member.v1.ListMembersRequest;
 import com.gym.proto.member.v1.ListMembersResponse;
-import com.gym.proto.member.v1.MemberResponse;
-import com.gym.proto.member.v1.MembershipResponse;
+import com.gym.proto.member.v1.GetMemberResponse;
+import com.gym.proto.member.v1.UpdateProfileResponse;
+import com.gym.proto.member.v1.PauseMembershipResponse;
+import com.gym.proto.member.v1.ResumeMembershipResponse;
+import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.PauseMembershipRequest;
 import com.gym.proto.member.v1.PurchaseMembershipRequest;
-import com.gym.proto.member.v1.PurchaseResponse;
+import com.gym.proto.member.v1.PurchaseMembershipResponse;
 import com.gym.proto.member.v1.ResumeMembershipRequest;
 import com.gym.proto.member.v1.UpdateProfileRequest;
 import com.gym.proto.member.v1.ValidateMembershipRequest;
@@ -45,6 +48,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -103,14 +107,14 @@ class MemberGrpcHandlerUnitTest {
     }
 
     @Test
-    void givenValidMemberId_whenGetMember_thenReturnsMemberResponse() {
+    void givenValidMemberId_whenGetMember_thenReturnsGetMemberResponse() {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.getMember(request, responseObserver));
 
-        verify(responseObserver, times(1)).onNext(any(MemberResponse.class));
+        verify(responseObserver, times(1)).onNext(any(GetMemberResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
@@ -119,10 +123,8 @@ class MemberGrpcHandlerUnitTest {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new NotFoundException("Not found"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.getMember(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.getMember(request, responseObserver)));
     }
 
     @Test
@@ -130,10 +132,8 @@ class MemberGrpcHandlerUnitTest {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new IllegalArgumentException("Invalid argument"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.getMember(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.getMember(request, responseObserver)));
     }
 
     @Test
@@ -142,10 +142,8 @@ class MemberGrpcHandlerUnitTest {
         when(memberService.getMember(memberId.toString()))
                 .thenThrow(new CannotPauseLifetimeException("Precondition failed"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.getMember(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.getMember(request, responseObserver)));
     }
 
     @Test
@@ -153,14 +151,12 @@ class MemberGrpcHandlerUnitTest {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId.toString()).build();
         when(memberService.getMember(memberId.toString())).thenThrow(new RuntimeException("Internal error"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.getMember(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.getMember(request, responseObserver)));
     }
 
     @Test
-    void givenValidUpdateProfileRequest_whenUpdateProfile_thenReturnsMemberResponse() {
+    void givenValidUpdateProfileRequest_whenUpdateProfile_thenReturnsUpdateProfileResponse() {
         UpdateProfileRequest request = UpdateProfileRequest.newBuilder()
                 .setMemberId(memberId.toString())
                 .setFullName("Jane")
@@ -172,7 +168,7 @@ class MemberGrpcHandlerUnitTest {
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.updateProfile(request, responseObserver));
 
-        verify(responseObserver, times(1)).onNext(any(MemberResponse.class));
+        verify(responseObserver, times(1)).onNext(any(UpdateProfileResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
@@ -183,10 +179,8 @@ class MemberGrpcHandlerUnitTest {
         when(memberService.updateProfile(any(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Error"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.updateProfile(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.updateProfile(request, responseObserver)));
     }
 
     @Test
@@ -211,14 +205,12 @@ class MemberGrpcHandlerUnitTest {
         ListMembersRequest request = ListMembersRequest.newBuilder().build();
         when(memberService.listMembers(any(), anyInt(), anyInt())).thenThrow(new RuntimeException("Error"));
 
-        runWithClaims(userId.toString(), "SUPER_ADMIN", gymId.toString(), () ->
-                memberGrpcHandler.listMembers(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "SUPER_ADMIN", gymId.toString(), () ->
+                memberGrpcHandler.listMembers(request, responseObserver)));
     }
 
     @Test
-    void givenPurchaseRequest_whenPurchaseMembership_thenReturnsPurchaseResponse() {
+    void givenPurchaseRequest_whenPurchaseMembership_thenReturnsPurchaseMembershipResponse() {
         String planId = UUID.randomUUID().toString();
         PurchaseMembershipRequest request = PurchaseMembershipRequest.newBuilder()
                 .setPlanId(planId)
@@ -227,17 +219,17 @@ class MemberGrpcHandlerUnitTest {
         when(memberService.getMemberByUserId(userId.toString())).thenReturn(memberDto);
         when(membershipPurchaseUseCase.purchaseMembership(
                 userId.toString(), gymId.toString(), planId, "STRIPE", ""))
-                .thenReturn(PurchaseResponse.newBuilder().setPaymentId("pay-1").setPaymentUrl("http://pay").build());
+                .thenReturn(PurchaseMembershipResponse.newBuilder().setPaymentId("pay-1").setPaymentUrl("http://pay").build());
 
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.purchaseMembership(request, responseObserver));
 
-        verify(responseObserver, times(1)).onNext(any(PurchaseResponse.class));
+        verify(responseObserver, times(1)).onNext(any(PurchaseMembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
     @Test
-    void givenValidMemberId_whenPauseMembership_thenReturnsMembershipResponse() {
+    void givenValidMemberId_whenPauseMembership_thenReturnsPauseMembershipResponse() {
         PauseMembershipRequest request =
                 PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(
@@ -250,7 +242,7 @@ class MemberGrpcHandlerUnitTest {
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.pauseMembership(request, responseObserver));
 
-        verify(responseObserver, times(1)).onNext(any(MembershipResponse.class));
+        verify(responseObserver, times(1)).onNext(any(PauseMembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
@@ -261,14 +253,12 @@ class MemberGrpcHandlerUnitTest {
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
         when(subscriptionLifecycleUseCase.pauseSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.pauseMembership(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.pauseMembership(request, responseObserver)));
     }
 
     @Test
-    void givenValidMemberId_whenResumeMembership_thenReturnsMembershipResponse() {
+    void givenValidMemberId_whenResumeMembership_thenReturnsResumeMembershipResponse() {
         ResumeMembershipRequest request =
                 ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(
@@ -281,7 +271,7 @@ class MemberGrpcHandlerUnitTest {
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.resumeMembership(request, responseObserver));
 
-        verify(responseObserver, times(1)).onNext(any(MembershipResponse.class));
+        verify(responseObserver, times(1)).onNext(any(ResumeMembershipResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
@@ -292,14 +282,12 @@ class MemberGrpcHandlerUnitTest {
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
         when(subscriptionLifecycleUseCase.resumeSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.resumeMembership(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.resumeMembership(request, responseObserver)));
     }
 
     @Test
-    void givenValidMemberId_whenGetMembershipStatus_thenReturnsMembershipResponse() {
+    void givenValidMemberId_whenGetMembershipStatus_thenReturnsGetMembershipStatusResponse() {
         GetMembershipStatusRequest request =
                 GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
         SubscriptionDto subDto = new SubscriptionDto(
@@ -312,7 +300,7 @@ class MemberGrpcHandlerUnitTest {
         runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
                 memberGrpcHandler.getMembershipStatus(request, responseObserver));
 
-        verify(responseObserver, times(1)).onNext(any(MembershipResponse.class));
+        verify(responseObserver, times(1)).onNext(any(GetMembershipStatusResponse.class));
         verify(responseObserver, times(1)).onCompleted();
     }
 
@@ -324,10 +312,8 @@ class MemberGrpcHandlerUnitTest {
         when(subscriptionLifecycleUseCase.getActiveSubscription(any(), any()))
                 .thenThrow(new RuntimeException("Error"));
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.getMembershipStatus(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                memberGrpcHandler.getMembershipStatus(request, responseObserver)));
     }
 
     @Test
@@ -358,16 +344,14 @@ class MemberGrpcHandlerUnitTest {
                 .build();
         when(memberService.getMember(any())).thenThrow(new RuntimeException("Error"));
 
-        runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () ->
-                memberGrpcHandler.validateMembership(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims("checkin-service-id", "CHECKIN_SERVICE", gymId.toString(), () ->
+                memberGrpcHandler.validateMembership(request, responseObserver)));
     }
 
     @Test
     void givenStatus_whenListMembersByStatus_thenReturnsListMembersByStatusResponse() {
         ListMembersByStatusRequest request = ListMembersByStatusRequest.newBuilder()
-                .setStatus("ACTIVE")
+                .setStatus(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE)
                 .addGymIds(gymId.toString())
                 .build();
         when(memberService.listMembersByStatus(MembershipStatus.ACTIVE, List.of(gymId.toString())))
@@ -383,13 +367,11 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenErrorOnListMembersByStatus_whenListMembersByStatus_thenCallsOnError() {
         ListMembersByStatusRequest request =
-                ListMembersByStatusRequest.newBuilder().setStatus("ACTIVE").build();
+                ListMembersByStatusRequest.newBuilder().setStatus(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE).build();
         when(memberService.listMembersByStatus(any(), any())).thenThrow(new RuntimeException("Error"));
 
-        runWithClaims("notification-service-id", "NOTIFICATION_SERVICE", gymId.toString(), () ->
-                memberGrpcHandler.listMembersByStatus(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(any());
+        assertThrows(Throwable.class, () -> runWithClaims("notification-service-id", "NOTIFICATION_SERVICE", gymId.toString(), () ->
+                memberGrpcHandler.listMembersByStatus(request, responseObserver)));
     }
 
     @Test
@@ -400,12 +382,8 @@ class MemberGrpcHandlerUnitTest {
                 .build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
 
-        runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
-                memberGrpcHandler.updateProfile(request, responseObserver));
-
-        verify(responseObserver, times(1)).onError(org.mockito.ArgumentMatchers.argThat(throwable ->
-                throwable instanceof io.grpc.StatusRuntimeException
-                        && ((io.grpc.StatusRuntimeException) throwable).getStatus().getCode()
-                        == io.grpc.Status.Code.INVALID_ARGUMENT));
+        assertThrows(java.time.format.DateTimeParseException.class, () ->
+                runWithClaims(userId.toString(), "CUSTOMER", gymId.toString(), () ->
+                        memberGrpcHandler.updateProfile(request, responseObserver)));
     }
 }

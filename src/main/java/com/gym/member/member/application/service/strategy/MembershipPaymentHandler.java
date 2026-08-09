@@ -6,6 +6,7 @@ import com.gym.member.member.adapter.out.persistence.repository.PendingPurchaseJ
 import com.gym.member.member.application.port.in.SubscriptionActivationUseCase;
 import com.gym.member.member.domain.dto.PurchasedPlanTerms;
 import com.gym.member.member.domain.model.PurchaseStatus;
+import com.gym.proto.common.v1.PaymentType;
 import com.gym.proto.events.v1.PaymentCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,8 @@ public class MembershipPaymentHandler implements PaymentTypeHandler {
     private final SubscriptionActivationUseCase subscriptionActivationUseCase;
 
     @Override
-    public boolean supports(String paymentType) {
-        return "MEMBERSHIP".equalsIgnoreCase(paymentType);
+    public boolean supports(PaymentType paymentType) {
+        return paymentType == PaymentType.PAYMENT_TYPE_MEMBERSHIP;
     }
 
     @Override

@@ -37,8 +37,8 @@ public class TestEventSeeder {
                     .setUserId(testUserId)
                     .setFullName("John Doe (Test Member)")
                     .setEmail("johndoe@example.com")
-                    .setRole("MEMBER")
-                    .setAuthProvider("LOCAL")
+                    .setRole(com.gym.proto.common.v1.Role.ROLE_CUSTOMER)
+                    .setAuthProvider(com.gym.proto.common.v1.AuthProvider.AUTH_PROVIDER_LOCAL)
                     .setTimestamp(Instant.now().toEpochMilli())
                     .build();
 
@@ -55,7 +55,7 @@ public class TestEventSeeder {
             PaymentCompletedEvent paymentEvent = PaymentCompletedEvent.newBuilder()
                     .setPaymentId(UUID.randomUUID().toString())
                     .setUserId(testUserId)
-                    .setType("MEMBERSHIP")
+                    .setType(com.gym.proto.common.v1.PaymentType.PAYMENT_TYPE_MEMBERSHIP)
                     .setReferenceId(testPlanId)
                     .setAmountVnd(500000)
                     .setProvider("MOMO")

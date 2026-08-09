@@ -46,7 +46,7 @@ class OutboxPublisherIntegrationTest {
                 .setMemberId(UUID.randomUUID().toString())
                 .setUserId(UUID.randomUUID().toString())
                 .setGymId(UUID.randomUUID().toString())
-                .setPlanType("MONTHLY")
+                .setPlanType(com.gym.proto.common.v1.PlanType.PLAN_TYPE_MONTHLY)
                 .setStartDate("2026-01-01")
                 .setEndDate("2026-02-01")
                 .setTimestamp(Instant.now().toEpochMilli())

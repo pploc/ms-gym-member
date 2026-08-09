@@ -6,9 +6,9 @@ public final class MemberEventTopics {
 
     public static final String AGGREGATE_TYPE_MEMBER = "member";
 
-    public static final String MEMBERSHIP_ACTIVATED = "membership.activated";
-    public static final String MEMBERSHIP_PAUSED = "membership.paused";
-    public static final String MEMBERSHIP_RESUMED = "membership.resumed";
-    public static final String MEMBERSHIP_EXPIRED = "membership.expired";
-    public static final String MEMBERSHIP_EXPIRING_SOON = "membership.expiring-soon";
+    public static final String MEMBERSHIP_ACTIVATED = "membership.activated.v1";
+    public static final String MEMBERSHIP_PAUSED = "membership.paused.v1";
+    public static final String MEMBERSHIP_RESUMED = "membership.resumed.v1";
+    public static final String MEMBERSHIP_EXPIRED = "membership.expired.v1";
+    public static final String MEMBERSHIP_EXPIRING_SOON = "membership.expiring-soon.v1";
 }
