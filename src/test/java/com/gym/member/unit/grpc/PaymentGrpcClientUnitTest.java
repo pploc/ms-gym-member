@@ -15,7 +15,7 @@ class PaymentGrpcClientUnitTest {
     @Test
     void givenUnconfiguredTarget_whenInitiatePayment_throwsStatusRuntimeException() {
         MemberProperties.PaymentProperties paymentProps = new MemberProperties.PaymentProperties("", Duration.ofSeconds(3), true);
-        MemberProperties properties = new MemberProperties(null, null, null, paymentProps, false);
+        MemberProperties properties = new MemberProperties(null, null, null, paymentProps, null, false);
 
         PaymentGrpcClient client = new PaymentGrpcClient(properties);
         assertThrows(StatusRuntimeException.class, () -> client.initiatePayment(InitiatePaymentRequest.getDefaultInstance()));
@@ -25,7 +25,7 @@ class PaymentGrpcClientUnitTest {
     @Test
     void givenConfiguredTarget_whenConstructedAndClosed_createsChannelAndShutdowns() {
         MemberProperties.PaymentProperties paymentProps = new MemberProperties.PaymentProperties("localhost:50052", Duration.ofSeconds(3), true);
-        MemberProperties properties = new MemberProperties(null, null, null, paymentProps, false);
+        MemberProperties properties = new MemberProperties(null, null, null, paymentProps, null, false);
 
         PaymentGrpcClient client = new PaymentGrpcClient(properties);
         client.close();

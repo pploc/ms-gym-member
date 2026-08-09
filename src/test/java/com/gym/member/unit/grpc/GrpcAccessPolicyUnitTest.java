@@ -19,7 +19,7 @@ class GrpcAccessPolicyUnitTest {
 
     @Test
     void givenMismatchUserId_whenRequireSelf_throwsForbiddenException() {
-        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1");
+        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1", null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
         ctx.run(() -> {
             MemberDto member = new MemberDto(UUID.randomUUID(), UUID.randomUUID(), "Name", null, null, null, MembershipStatus.ACTIVE, Instant.now(), Instant.now());
@@ -29,7 +29,7 @@ class GrpcAccessPolicyUnitTest {
 
     @Test
     void givenMismatchGymId_whenRequireGym_throwsForbiddenException() {
-        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1");
+        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1", null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
         ctx.run(() -> {
             assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGym("gym-2"));
@@ -39,7 +39,7 @@ class GrpcAccessPolicyUnitTest {
 
     @Test
     void givenSuperAdmin_whenRequireGym_returnsWithoutException() {
-        UserClaims claims = new UserClaims("admin-1", "SUPER_ADMIN", null);
+        UserClaims claims = new UserClaims("admin-1", "SUPER_ADMIN", null, null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
         ctx.run(() -> {
             assertDoesNotThrow(() -> GrpcAccessPolicy.requireGym("gym-2"));
@@ -49,7 +49,7 @@ class GrpcAccessPolicyUnitTest {
 
     @Test
     void givenMismatchGymIds_whenRequireGymIds_throwsForbiddenException() {
-        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1");
+        UserClaims claims = new UserClaims("user-1", "MEMBER", "gym-1", null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
         ctx.run(() -> {
             assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGymIds(List.of("gym-1", "gym-2")));

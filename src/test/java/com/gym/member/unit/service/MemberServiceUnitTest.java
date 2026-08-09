@@ -3,7 +3,6 @@ package com.gym.member.unit.service;
 import com.gym.common.error.NotFoundException;
 import com.gym.common.pagination.NormalPage;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
-import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.member.application.service.MemberService;
 import com.gym.member.member.domain.dto.MemberDto;
@@ -38,9 +37,6 @@ class MemberServiceUnitTest {
 
     @Mock
     private MemberJpaRepository memberRepository;
-
-    @Mock
-    private GymLocationJpaRepository gymLocationRepository;
 
     @Spy
     private MemberMapper memberMapper = Mappers.getMapper(MemberMapper.class);

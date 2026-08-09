@@ -45,10 +45,8 @@ src/main/java/com/gym/member/
 │   ├── domain/                # Aggregates, Enums, DTOs, Events, Exceptions
 │   ├── application/           # Member & Subscription Use Cases, Services, Schedulers
 │   └── adapter/               # gRPC Inbound Delegates/Handlers, Persistence Entities & Repositories
-├── location/                  # Bounded Context: Gym Location Domain
-│   ├── domain/                # Gym Location Models & DTOs
-│   ├── application/           # Gym location use cases and services
-│   └── adapter/               # Gym Location gRPC handlers and persistence adapters
+├── plans/                     # Outbound Plans client (ResolvePurchasablePlan only)
+│   └── adapter/out/grpc/      # Plans mTLS gRPC client
 ├── payment/                   # Bounded Context: Payment Integration & Event Listener
 │   └── adapter/               # Payment gRPC Client & Kafka Event Consumer Adapters
 ├── shared/                    # Shared Infrastructure Context
@@ -58,6 +56,7 @@ src/main/java/com/gym/member/
 └── config/                    # Spring Boot, Security, and gRPC Configuration
 ```
 
+Catalog/location ownership lives in **ms-gym-plans**. Member keeps opaque `gym_id`/`plan_id` plus purchased snapshots and `pending_purchases`.
 ---
 
 ## ⚡ Quick Start & Testing
@@ -120,5 +119,14 @@ Continuous Integration and Container Builds are automated via GitHub Actions usi
 | `MEMBER_GRPC_SERVER_CERT` | `certs/local/server.crt` | server chain; **prod must override** |
 | `MEMBER_GRPC_SERVER_KEY` | `certs/local/server.key` | server key; **prod must override** |
 | `MEMBER_GRPC_CLIENT_CA` | `certs/local/ca.crt` | client trust CA; **prod must override** |
+| `PLANS_GRPC_TARGET` | _(empty)_ | Plans gRPC host:port; required for purchase |
+| `PLANS_GRPC_DEADLINE` | `PT3S` | Plans RPC deadline |
+| `PLANS_GRPC_USE_PLAINTEXT` | `false` | Plans client plaintext (local only) |
+| `PLANS_CLIENT_CERT` | `certs/local/client-member.crt` | Member→Plans client cert |
+| `PLANS_CLIENT_KEY` | `certs/local/client-member.key` | Member→Plans client key |
+| `PLANS_SERVER_CA` | `certs/local/ca.crt` | Plans server CA |
+| `PLANS_GRPC_AUTHORITY` | `ms-gym-plans` | TLS authority override |
+| `PAYMENT_GRPC_TARGET` | _(empty)_ | Payment gRPC host:port |
+| `PAYMENT_GRPC_USE_PLAINTEXT` | `true` | Payment client plaintext default |
 
 Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image. Production always sets the three `MEMBER_GRPC_*` path env vars to real certs.

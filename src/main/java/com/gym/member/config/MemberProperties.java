@@ -10,6 +10,7 @@ public record MemberProperties(
         SubscriptionProperties subscription,
         OutboxProperties outbox,
         PaymentProperties payment,
+        PlansProperties plans,
         boolean requireEventId
 ) {
     public record CronProperties(
@@ -35,5 +36,15 @@ public record MemberProperties(
             String target,
             Duration deadline,
             boolean usePlaintext
+    ) {}
+
+    public record PlansProperties(
+            String target,
+            Duration deadline,
+            boolean usePlaintext,
+            String clientCert,
+            String clientKey,
+            String serverCa,
+            String authority
     ) {}
 }

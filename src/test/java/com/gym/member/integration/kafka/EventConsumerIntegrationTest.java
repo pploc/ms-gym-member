@@ -1,11 +1,8 @@
 package com.gym.member.integration.kafka;
 
 import com.gym.common.kafka.consumer.DecodedKafkaRecord;
-import com.gym.common.kafka.consumer.RawKafkaRecord;
 import com.gym.common.kafka.consumer.RawKafkaHeader;
-import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
-import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
-import com.gym.member.location.domain.model.GymLocationStatus;
+import com.gym.common.kafka.consumer.RawKafkaRecord;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.payment.adapter.in.kafka.EventConsumerAdapter;
@@ -36,34 +33,19 @@ class EventConsumerIntegrationTest {
     private MemberJpaRepository memberRepository;
 
     @Autowired
-    private GymLocationJpaRepository gymLocationRepository;
-
-    @Autowired
     private ProcessedEventJpaRepository processedEventRepository;
 
-    private String gymId;
     private String userId;
     private String eventId;
 
     @BeforeEach
     void setUp() {
-        gymId = UUID.randomUUID().toString();
         userId = UUID.randomUUID().toString();
         eventId = UUID.randomUUID().toString();
-
-        GymLocationEntity location = new GymLocationEntity();
-        location.setId(gymId);
-        location.setChainId(UUID.randomUUID().toString());
-        location.setName("Integration Gym");
-        location.setAddress("Street 1");
-        location.setCity("Hanoi");
-        location.setStatus(GymLocationStatus.ACTIVE);
-        gymLocationRepository.save(location);
     }
 
     @Test
     void givenUserRegisteredEvent_whenHandleUserRegistered_thenPersistsMemberAndIdempotencyRecord() {
-        // Given
         UserRegisteredEvent payload = UserRegisteredEvent.newBuilder()
                 .setUserId(userId)
                 .setFullName("Integration User")
@@ -77,21 +59,23 @@ class EventConsumerIntegrationTest {
                 payload.toByteArray(),
                 java.util.List.of(
                         new RawKafkaHeader(KafkaEventMetadata.HEADER_EVENT_ID, eventId.getBytes(StandardCharsets.UTF_8)),
-                        new RawKafkaHeader(KafkaEventMetadata.HEADER_EVENT_TYPE, payload.getDescriptorForType().getFullName().getBytes(StandardCharsets.UTF_8)),
-                        new RawKafkaHeader(KafkaEventMetadata.HEADER_SOURCE, "user-service".getBytes(StandardCharsets.UTF_8)),
-                        new RawKafkaHeader(KafkaEventMetadata.HEADER_TIMESTAMP, String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8))
+                        new RawKafkaHeader(
+                                KafkaEventMetadata.HEADER_EVENT_TYPE,
+                                payload.getDescriptorForType().getFullName().getBytes(StandardCharsets.UTF_8)),
+                        new RawKafkaHeader(
+                                KafkaEventMetadata.HEADER_SOURCE,
+                                "user-service".getBytes(StandardCharsets.UTF_8)),
+                        new RawKafkaHeader(
+                                KafkaEventMetadata.HEADER_TIMESTAMP,
+                                String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8))
                 )
         );
 
-        // When
         consumerAdapter.handle(new DecodedKafkaRecord(raw, payload));
 
-        // Then
         MemberEntity member = memberRepository.findByUserId(userId).orElse(null);
         assertThat(member).isNotNull();
         assertThat(member.getFullName()).isEqualTo("Integration User");
-
-        boolean processed = processedEventRepository.existsById(eventId);
-        assertThat(processed).isTrue();
+        assertThat(processedEventRepository.existsById(eventId)).isTrue();
     }
 }

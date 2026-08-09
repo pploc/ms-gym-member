@@ -1,19 +1,16 @@
 package com.gym.member.member.application.service;
 
-import com.gym.member.shared.outbox.service.OutboxEventWriter;
-
+import com.gym.member.config.MemberProperties;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
-import com.gym.member.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
-import com.gym.member.member.adapter.out.persistence.repository.MembershipPlanJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
-import com.gym.member.member.application.port.in.SubscriptionExpiryUseCase;
 import com.gym.member.member.adapter.out.persistence.specification.SubscriptionSpecifications;
-import com.gym.member.config.MemberProperties;
-import com.gym.member.shared.outbox.repository.OutboxEventJpaRepository;
+import com.gym.member.member.application.port.in.SubscriptionExpiryUseCase;
 import com.gym.member.member.domain.constant.MemberEventTopics;
 import com.gym.member.member.domain.model.MembershipStatus;
+import com.gym.member.shared.outbox.repository.OutboxEventJpaRepository;
+import com.gym.member.shared.outbox.service.OutboxEventWriter;
 import com.gym.proto.events.v1.MembershipExpiredEvent;
 import com.gym.proto.events.v1.MembershipExpiringSoonEvent;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +33,6 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
 
     private final SubscriptionJpaRepository subscriptionRepository;
     private final MemberJpaRepository memberRepository;
-    private final MembershipPlanJpaRepository planRepository;
     private final OutboxEventJpaRepository outboxEventRepository;
     private final OutboxEventWriter outboxEventWriter;
     private final MembershipEventFactory eventFactory;
@@ -46,14 +42,16 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
     @Transactional
     public void processExpiredSubscriptions() {
         LocalDate today = LocalDate.now(clock);
-        List<SubscriptionEntity> expiredSubs = subscriptionRepository.findAll(
-                SubscriptionSpecifications.isExpiredActive(today)
-        );
-        if (expiredSubs.isEmpty()) return;
+        List<SubscriptionEntity> expiredSubs =
+                subscriptionRepository.findAll(SubscriptionSpecifications.isExpiredActive(today));
+        if (expiredSubs.isEmpty()) {
+            return;
+        }
 
-        Set<String> memberIds = expiredSubs.stream().map(SubscriptionEntity::getMemberId).collect(Collectors.toSet());
-        List<MemberEntity> members = memberRepository.findAllById(memberIds);
-        java.util.Map<String, MemberEntity> memberMap = members.stream().collect(Collectors.toMap(MemberEntity::getId, m -> m));
+        Set<String> memberIds =
+                expiredSubs.stream().map(SubscriptionEntity::getMemberId).collect(Collectors.toSet());
+        java.util.Map<String, MemberEntity> memberMap = memberRepository.findAllById(memberIds).stream()
+                .collect(Collectors.toMap(MemberEntity::getId, m -> m));
 
         for (SubscriptionEntity sub : expiredSubs) {
             sub.setStatus(MembershipStatus.EXPIRED);
@@ -65,7 +63,11 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
                 memberRepository.save(member);
 
                 MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, sub, clock);
-                outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRED, event);
+                outboxEventWriter.write(
+                        MemberEventTopics.AGGREGATE_TYPE_MEMBER,
+                        member.getId(),
+                        MemberEventTopics.MEMBERSHIP_EXPIRED,
+                        event);
             }
         }
     }
@@ -75,36 +77,34 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
         int warningDays = memberProperties.subscription().warningNoticeDays();
         LocalDate today = LocalDate.now(clock);
         LocalDate warningDate = today.plusDays(warningDays);
-        List<SubscriptionEntity> warningSubs = subscriptionRepository.findAll(
-                SubscriptionSpecifications.isExpiringSoon(warningDate)
-        );
-        if (warningSubs.isEmpty()) return;
+        List<SubscriptionEntity> warningSubs =
+                subscriptionRepository.findAll(SubscriptionSpecifications.isExpiringSoon(warningDate));
+        if (warningSubs.isEmpty()) {
+            return;
+        }
 
-        Set<String> memberIds = warningSubs.stream().map(SubscriptionEntity::getMemberId).collect(Collectors.toSet());
-        Set<String> planIds = warningSubs.stream().map(SubscriptionEntity::getPlanId).collect(Collectors.toSet());
-
+        Set<String> memberIds =
+                warningSubs.stream().map(SubscriptionEntity::getMemberId).collect(Collectors.toSet());
         java.util.Map<String, MemberEntity> memberMap = memberRepository.findAllById(memberIds).stream()
                 .collect(Collectors.toMap(MemberEntity::getId, m -> m));
-        java.util.Map<String, MembershipPlanEntity> planMap = planRepository.findAllById(planIds).stream()
-                .collect(Collectors.toMap(MembershipPlanEntity::getId, p -> p));
 
         Instant startOfDay = today.atStartOfDay(clock.getZone()).toInstant();
 
         for (SubscriptionEntity sub : warningSubs) {
             MemberEntity member = memberMap.get(sub.getMemberId());
-            MembershipPlanEntity plan = planMap.get(sub.getPlanId());
-            if (member == null || plan == null) {
+            if (member == null || sub.getPlanTypeSnapshot() == null) {
                 continue;
             }
 
             boolean alreadySentToday = outboxEventRepository.existsByAggregateIdAndEventTypeAndCreatedAtGreaterThanEqual(
-                    member.getId(),
-                    "MembershipExpiringSoonEvent",
-                    startOfDay
-            );
+                    member.getId(), "MembershipExpiringSoonEvent", startOfDay);
             if (!alreadySentToday) {
-                MembershipExpiringSoonEvent event = eventFactory.createExpiringSoonEvent(member, sub, plan);
-                outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRING_SOON, event);
+                MembershipExpiringSoonEvent event = eventFactory.createExpiringSoonEvent(member, sub);
+                outboxEventWriter.write(
+                        MemberEventTopics.AGGREGATE_TYPE_MEMBER,
+                        member.getId(),
+                        MemberEventTopics.MEMBERSHIP_EXPIRING_SOON,
+                        event);
             }
         }
     }
@@ -123,15 +123,19 @@ public class SubscriptionExpiryService implements SubscriptionExpiryUseCase {
 
         List<SubscriptionEntity> currentSubscriptions = subscriptionRepository.findAll(
                 SubscriptionSpecifications.hasMemberId(member.getId())
-                        .and(SubscriptionSpecifications.hasAnyStatus(List.of(MembershipStatus.ACTIVE, MembershipStatus.PAUSED)))
-        );
+                        .and(SubscriptionSpecifications.hasAnyStatus(
+                                List.of(MembershipStatus.ACTIVE, MembershipStatus.PAUSED))));
         for (SubscriptionEntity subscription : currentSubscriptions) {
             subscription.setStatus(MembershipStatus.EXPIRED);
             subscriptionRepository.save(subscription);
             log.info("Cancelled subscription id {} for suspended user: {}", subscription.getId(), userId);
 
             MembershipExpiredEvent event = eventFactory.createExpiredEvent(member, subscription, clock);
-            outboxEventWriter.write(MemberEventTopics.AGGREGATE_TYPE_MEMBER, member.getId(), MemberEventTopics.MEMBERSHIP_EXPIRED, event);
+            outboxEventWriter.write(
+                    MemberEventTopics.AGGREGATE_TYPE_MEMBER,
+                    member.getId(),
+                    MemberEventTopics.MEMBERSHIP_EXPIRED,
+                    event);
         }
 
         log.info("Successfully suspended member id {} for userId: {}", member.getId(), userId);

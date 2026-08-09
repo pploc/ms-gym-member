@@ -6,15 +6,20 @@ import com.gym.common.grpc.interceptor.LoggingInterceptor;
 import com.gym.common.grpc.interceptor.MetricsInterceptor;
 import com.gym.common.grpc.interceptor.TracingInterceptor;
 import com.gym.member.member.adapter.in.grpc.MemberGrpcHandler;
-import com.gym.member.location.adapter.out.persistence.entity.GymLocationEntity;
-import com.gym.member.location.domain.model.GymLocationStatus;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
 import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
-import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
 import com.gym.member.member.domain.model.MembershipStatus;
-import com.gym.proto.member.v1.*;
+import com.gym.member.member.domain.model.PlanType;
+import com.gym.proto.member.v1.GetMemberRequest;
+import com.gym.proto.member.v1.GetMembershipStatusByUserIdRequest;
+import com.gym.proto.member.v1.ListMembersRequest;
+import com.gym.proto.member.v1.ListMembersResponse;
+import com.gym.proto.member.v1.MemberResponse;
+import com.gym.proto.member.v1.MemberServiceGrpc;
+import com.gym.proto.member.v1.MembershipResponse;
+import com.gym.proto.member.v1.UpdateProfileRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.Server;
@@ -66,9 +71,6 @@ class MemberGrpcIntegrationTest {
     private MemberJpaRepository memberRepository;
 
     @Autowired
-    private GymLocationJpaRepository gymLocationRepository;
-
-    @Autowired
     private SubscriptionJpaRepository subscriptionRepository;
 
     private Server inProcessServer;
@@ -85,15 +87,6 @@ class MemberGrpcIntegrationTest {
         memberId = UUID.randomUUID().toString();
         userId = UUID.randomUUID().toString();
 
-        GymLocationEntity location = new GymLocationEntity();
-        location.setId(gymId);
-        location.setChainId(UUID.randomUUID().toString());
-        location.setName("Integration Gym Location");
-        location.setAddress("456 Broadway");
-        location.setCity("New York");
-        location.setStatus(GymLocationStatus.ACTIVE);
-        gymLocationRepository.save(location);
-
         MemberEntity member = new MemberEntity();
         member.setId(memberId);
         member.setUserId(userId);
@@ -103,63 +96,71 @@ class MemberGrpcIntegrationTest {
         member.setCreatedAt(Instant.now());
         member.setUpdatedAt(Instant.now());
         memberRepository.save(member);
+
         SubscriptionEntity sub = new SubscriptionEntity();
         sub.setId(UUID.randomUUID().toString());
         sub.setMemberId(memberId);
         sub.setGymId(gymId);
         sub.setPlanId(UUID.randomUUID().toString());
+        sub.setPlanTypeSnapshot(PlanType.MONTHLY);
+        sub.setDurationDaysSnapshot(30);
+        sub.setPriceVndSnapshot(500_000L);
         sub.setStatus(MembershipStatus.ACTIVE);
         sub.setStartDate(java.time.LocalDate.now());
         sub.setEndDate(java.time.LocalDate.now().plusDays(30));
         subscriptionRepository.save(sub);
 
         String serverName = InProcessServerBuilder.generateName();
-
-        AuthServerInterceptor testAuthInterceptor = new AuthServerInterceptor(
-                methodRegistry,
-                call -> true
-        );
+        AuthServerInterceptor testAuthInterceptor = new AuthServerInterceptor(methodRegistry, call -> true);
 
         inProcessServer = InProcessServerBuilder.forName(serverName)
                 .directExecutor()
                 .addService(ServerInterceptors.intercept(
                         memberGrpcHandler,
-                        List.of(tracingInterceptor, loggingInterceptor, metricsInterceptor, exceptionInterceptor, testAuthInterceptor)
-                ))
+                        List.of(
+                                tracingInterceptor,
+                                loggingInterceptor,
+                                metricsInterceptor,
+                                exceptionInterceptor,
+                                testAuthInterceptor)))
                 .build()
                 .start();
 
-        inProcessChannel = InProcessChannelBuilder.forName(serverName)
-                .directExecutor()
-                .build();
-
+        inProcessChannel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
         blockingStub = MemberServiceGrpc.newBlockingStub(inProcessChannel);
     }
 
     @AfterEach
     void tearDown() {
-        if (inProcessChannel != null) inProcessChannel.shutdownNow();
-        if (inProcessServer != null) inProcessServer.shutdownNow();
+        if (inProcessChannel != null) {
+            inProcessChannel.shutdownNow();
+        }
+        if (inProcessServer != null) {
+            inProcessServer.shutdownNow();
+        }
     }
 
     private MemberServiceGrpc.MemberServiceBlockingStub getStubWithHeaders(String uId, String role, String gId) {
         Metadata headers = new Metadata();
-        if (uId != null) headers.put(Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER), uId);
-        if (role != null) headers.put(Metadata.Key.of("x-user-role", Metadata.ASCII_STRING_MARSHALLER), role);
-        if (gId != null) headers.put(Metadata.Key.of("x-gym-id", Metadata.ASCII_STRING_MARSHALLER), gId);
+        if (uId != null) {
+            headers.put(Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER), uId);
+        }
+        if (role != null) {
+            headers.put(Metadata.Key.of("x-user-role", Metadata.ASCII_STRING_MARSHALLER), role);
+        }
+        if (gId != null) {
+            headers.put(Metadata.Key.of("x-gym-id", Metadata.ASCII_STRING_MARSHALLER), gId);
+        }
         return blockingStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
     }
 
     @Test
     void givenExistingMember_whenGetMember_thenReturnsMemberResponse() {
-        // Given
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
-        // When
         MemberResponse response = stub.getMember(request);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(memberId);
         assertThat(response.getFullName()).isEqualTo("John Real DB");
@@ -168,24 +169,17 @@ class MemberGrpcIntegrationTest {
 
     @Test
     void givenNonExistentMember_whenGetMember_thenThrowsNotFoundStatus() {
-        // Given
         String nonExistentId = UUID.randomUUID().toString();
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(nonExistentId).build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
-        // When
-        StatusRuntimeException exception = assertThrows(
-                StatusRuntimeException.class,
-                () -> stub.getMember(request)
-        );
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> stub.getMember(request));
 
-        // Then
         assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.NOT_FOUND);
     }
 
     @Test
     void givenValidProfileUpdateRequest_whenUpdateProfile_thenUpdatesMemberInDatabase() {
-        // Given
         UpdateProfileRequest request = UpdateProfileRequest.newBuilder()
                 .setMemberId(memberId)
                 .setFullName("Jane Real DB")
@@ -193,10 +187,8 @@ class MemberGrpcIntegrationTest {
                 .build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
-        // When
         MemberResponse response = stub.updateProfile(request);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getFullName()).isEqualTo("Jane Real DB");
         assertThat(response.getPhone()).isEqualTo("87654321");
@@ -208,18 +200,16 @@ class MemberGrpcIntegrationTest {
 
     @Test
     void givenExistingGymMembers_whenListMembers_thenReturnsMembersListResponse() {
-        // Given
         ListMembersRequest request = ListMembersRequest.newBuilder()
                 .setGymId(gymId)
                 .setPage(0)
                 .setLimit(10)
                 .build();
-        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", gymId);
+        MemberServiceGrpc.MemberServiceBlockingStub stub =
+                getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", gymId);
 
-        // When
         ListMembersResponse response = stub.listMembers(request);
 
-        // Then
         assertThat(response).isNotNull();
         assertThat(response.getTotal()).isEqualTo(1);
         assertThat(response.getMembers(0).getId()).isEqualTo(memberId);
@@ -230,30 +220,24 @@ class MemberGrpcIntegrationTest {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(null, null, null);
 
-        StatusRuntimeException exception = assertThrows(
-                StatusRuntimeException.class,
-                () -> stub.getMember(request)
-        );
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> stub.getMember(request));
 
         assertThat(exception.getStatus().getCode()).isIn(Status.Code.PERMISSION_DENIED, Status.Code.UNAUTHENTICATED);
     }
 
     @Test
-    void givenWrongRole_whenCreateGymLocation_thenThrowsPermissionDenied() {
-        CreateGymLocationRequest request = CreateGymLocationRequest.newBuilder()
-                .setChainId(UUID.randomUUID().toString())
-                .setName("Unauthorized Gym")
-                .setAddress("123 Main St")
-                .setCity("Boston")
+    void givenWrongRole_whenListMembers_thenThrowsPermissionDenied() {
+        ListMembersRequest request = ListMembersRequest.newBuilder()
+                .setGymId(gymId)
+                .setPage(0)
+                .setLimit(10)
                 .build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(userId, "CUSTOMER", gymId);
 
-        StatusRuntimeException exception = assertThrows(
-                StatusRuntimeException.class,
-                () -> stub.createGymLocation(request)
-        );
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> stub.listMembers(request));
 
-        assertThat(exception.getStatus().getCode()).isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
+        assertThat(exception.getStatus().getCode())
+                .isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
     }
 
     @Test
@@ -262,12 +246,10 @@ class MemberGrpcIntegrationTest {
         GetMemberRequest request = GetMemberRequest.newBuilder().setMemberId(memberId).build();
         MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(otherUserId, "CUSTOMER", gymId);
 
-        StatusRuntimeException exception = assertThrows(
-                StatusRuntimeException.class,
-                () -> stub.getMember(request)
-        );
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> stub.getMember(request));
 
-        assertThat(exception.getStatus().getCode()).isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
+        assertThat(exception.getStatus().getCode())
+                .isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
     }
 
     @Test
@@ -278,14 +260,13 @@ class MemberGrpcIntegrationTest {
                 .setPage(0)
                 .setLimit(10)
                 .build();
-        MemberServiceGrpc.MemberServiceBlockingStub stub = getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", otherGymId);
+        MemberServiceGrpc.MemberServiceBlockingStub stub =
+                getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", otherGymId);
 
-        StatusRuntimeException exception = assertThrows(
-                StatusRuntimeException.class,
-                () -> stub.listMembers(request)
-        );
+        StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> stub.listMembers(request));
 
-        assertThat(exception.getStatus().getCode()).isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
+        assertThat(exception.getStatus().getCode())
+                .isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
     }
 
     @Test
@@ -295,14 +276,9 @@ class MemberGrpcIntegrationTest {
                 .setGymId(gymId)
                 .build();
 
-        try {
-            MembershipResponse response = blockingStub.getMembershipStatusByUserId(request);
-            assertThat(response).isNotNull();
-            assertThat(response.getMemberId()).isEqualTo(memberId);
-            assertThat(response.getStatus()).isEqualTo("ACTIVE");
-        } catch (StatusRuntimeException e) {
-            System.err.println("TEST FAILURE STATUS: " + e.getStatus());
-            throw e;
-        }
+        MembershipResponse response = blockingStub.getMembershipStatusByUserId(request);
+        assertThat(response).isNotNull();
+        assertThat(response.getMemberId()).isEqualTo(memberId);
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
     }
 }

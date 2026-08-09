@@ -1,7 +1,6 @@
 package com.gym.member.member.application.service;
 
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
-import com.gym.member.member.adapter.out.persistence.entity.MembershipPlanEntity;
 import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.proto.events.v1.MembershipActivatedEvent;
 import com.gym.proto.events.v1.MembershipExpiredEvent;
@@ -25,12 +24,13 @@ public class MembershipEventFactory {
         this(Clock.systemUTC());
     }
 
-    public MembershipActivatedEvent createActivatedEvent(MemberEntity member, SubscriptionEntity sub, MembershipPlanEntity plan, boolean isRenewal, Clock clock) {
+    public MembershipActivatedEvent createActivatedEvent(
+            MemberEntity member, SubscriptionEntity sub, boolean isRenewal, Clock clock) {
         Clock useClock = clock != null ? clock : this.clock;
         return MembershipActivatedEvent.newBuilder()
                 .setMemberId(member.getId())
                 .setUserId(member.getUserId())
-                .setPlanType(plan.getPlanType().name())
+                .setPlanType(sub.getPlanTypeSnapshot().name())
                 .setStartDate(sub.getStartDate().toString())
                 .setEndDate(sub.getEndDate() != null ? sub.getEndDate().toString() : "")
                 .setGymId(sub.getGymId())
@@ -39,7 +39,8 @@ public class MembershipEventFactory {
                 .build();
     }
 
-    public MembershipPausedEvent createPausedEvent(MemberEntity member, SubscriptionEntity sub, int remainingDays, LocalDate today) {
+    public MembershipPausedEvent createPausedEvent(
+            MemberEntity member, SubscriptionEntity sub, int remainingDays, LocalDate today) {
         return MembershipPausedEvent.newBuilder()
                 .setMemberId(member.getId())
                 .setPausedAt(today.atStartOfDay(clock.getZone()).toInstant().toEpochMilli())
@@ -48,7 +49,8 @@ public class MembershipEventFactory {
                 .build();
     }
 
-    public MembershipResumedEvent createResumedEvent(MemberEntity member, SubscriptionEntity sub, LocalDate newEndDate) {
+    public MembershipResumedEvent createResumedEvent(
+            MemberEntity member, SubscriptionEntity sub, LocalDate newEndDate) {
         return MembershipResumedEvent.newBuilder()
                 .setMemberId(member.getId())
                 .setNewEndDate(newEndDate.toString())
@@ -56,11 +58,11 @@ public class MembershipEventFactory {
                 .build();
     }
 
-    public MembershipExpiringSoonEvent createExpiringSoonEvent(MemberEntity member, SubscriptionEntity sub, MembershipPlanEntity plan) {
+    public MembershipExpiringSoonEvent createExpiringSoonEvent(MemberEntity member, SubscriptionEntity sub) {
         return MembershipExpiringSoonEvent.newBuilder()
                 .setMemberId(member.getId())
                 .setEndDate(sub.getEndDate() != null ? sub.getEndDate().toString() : "")
-                .setPlanType(plan.getPlanType().name())
+                .setPlanType(sub.getPlanTypeSnapshot().name())
                 .setGymId(sub.getGymId())
                 .build();
     }

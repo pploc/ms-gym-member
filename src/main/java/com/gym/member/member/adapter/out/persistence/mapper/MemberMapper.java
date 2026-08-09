@@ -10,7 +10,11 @@ import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 
-@Mapper(componentModel = "spring", uses = {CommonMapperUtils.class}, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(
+        componentModel = "spring",
+        uses = {CommonMapperUtils.class},
+        unmappedTargetPolicy = ReportingPolicy.IGNORE,
+        unmappedSourcePolicy = ReportingPolicy.IGNORE)
 public interface MemberMapper {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "toUuid")

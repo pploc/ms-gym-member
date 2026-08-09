@@ -63,6 +63,14 @@ app:
       target: ${PAYMENT_GRPC_TARGET:}
       deadline: ${PAYMENT_GRPC_DEADLINE:PT3S}
       use-plaintext: ${PAYMENT_GRPC_USE_PLAINTEXT:true}
+    plans:
+      target: ${PLANS_GRPC_TARGET:}
+      deadline: ${PLANS_GRPC_DEADLINE:PT3S}
+      use-plaintext: ${PLANS_GRPC_USE_PLAINTEXT:false}
+      client-cert: ${PLANS_CLIENT_CERT:certs/local/client-member.crt}
+      client-key: ${PLANS_CLIENT_KEY:certs/local/client-member.key}
+      server-ca: ${PLANS_SERVER_CA:certs/local/ca.crt}
+      authority: ${PLANS_GRPC_AUTHORITY:ms-gym-plans}
 
 gym:
   kafka:

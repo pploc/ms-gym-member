@@ -3,12 +3,11 @@ package com.gym.member.member.application.service;
 import com.gym.common.error.NotFoundException;
 import com.gym.common.pagination.NormalPage;
 import com.gym.member.member.adapter.out.persistence.entity.MemberEntity;
-import com.gym.member.location.adapter.out.persistence.repository.GymLocationJpaRepository;
+import com.gym.member.member.adapter.out.persistence.mapper.MemberMapper;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
+import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
 import com.gym.member.member.domain.model.MembershipStatus;
-import com.gym.member.member.adapter.out.persistence.mapper.MemberMapper;
-import com.gym.member.member.application.port.in.MemberUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,7 +24,6 @@ import java.util.List;
 public class MemberService implements MemberUseCase {
 
     private final MemberJpaRepository memberRepository;
-    private final GymLocationJpaRepository gymLocationRepository;
     private final MemberMapper memberMapper;
 
     @Transactional(readOnly = true)
@@ -63,14 +61,23 @@ public class MemberService implements MemberUseCase {
     }
 
     @Transactional
-    public MemberDto updateProfile(String memberId, String fullName, String phone, String avatarUrl, LocalDate dateOfBirth) {
+    public MemberDto updateProfile(
+            String memberId, String fullName, String phone, String avatarUrl, LocalDate dateOfBirth) {
         MemberEntity entity = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found with id: " + memberId));
 
-        if (fullName != null && !fullName.isBlank()) entity.setFullName(fullName);
-        if (phone != null) entity.setPhone(phone);
-        if (avatarUrl != null) entity.setAvatarUrl(avatarUrl);
-        if (dateOfBirth != null) entity.setDateOfBirth(dateOfBirth);
+        if (fullName != null && !fullName.isBlank()) {
+            entity.setFullName(fullName);
+        }
+        if (phone != null) {
+            entity.setPhone(phone);
+        }
+        if (avatarUrl != null) {
+            entity.setAvatarUrl(avatarUrl);
+        }
+        if (dateOfBirth != null) {
+            entity.setDateOfBirth(dateOfBirth);
+        }
 
         MemberEntity saved = memberRepository.save(entity);
         return memberMapper.toDto(saved);
@@ -89,8 +96,7 @@ public class MemberService implements MemberUseCase {
                 memberPage.getNumber(),
                 memberPage.getSize(),
                 memberPage.getTotalElements(),
-                memberPage.getTotalPages()
-        );
+                memberPage.getTotalPages());
     }
 
     private static final int MAX_UNBOUNDED_RESULT_LIMIT = 1000;
@@ -103,7 +109,10 @@ public class MemberService implements MemberUseCase {
                 : memberRepository.findByStatus(status, safetyLimit);
 
         if (entities.size() >= MAX_UNBOUNDED_RESULT_LIMIT) {
-            log.warn("listMembersByStatus reached safety limit threshold of {}. Query results may be truncated for status={}", MAX_UNBOUNDED_RESULT_LIMIT, status);
+            log.warn(
+                    "listMembersByStatus reached safety limit threshold of {}. Query results may be truncated for status={}",
+                    MAX_UNBOUNDED_RESULT_LIMIT,
+                    status);
         }
         return entities.stream().map(memberMapper::toDto).toList();
     }

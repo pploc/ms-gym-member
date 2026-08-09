@@ -1,6 +1,6 @@
 # gRPC Testing Commands (`grpcurl`) for `ms-gym-member`
 
-This document provides standalone, direct `grpcurl` commands for all 15 RPC endpoints of `member.v1.MemberService`. Each command contains literal values and can be copied and executed directly in your terminal without setting shell environment variables.
+This document provides standalone, direct `grpcurl` commands for remaining `member.v1.MemberService` RPCs after Phase 8 (catalog/location RPCs live on ms-gym-plans). Each command contains literal values and can be copied and executed directly in your terminal without setting shell environment variables.
 
 ---
 
@@ -48,105 +48,63 @@ grpcurl -plaintext \
 
 ## 3. Subscription Management
 
-### 4. `GetPlans`
+### 4. `PurchaseMembership`
 ```bash
 grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"gym_id": "22222222-2222-2222-2222-222222222222"}' \
-  172.20.76.101:50051 member.v1.MemberService/GetPlans
-```
-
-### 5. `PurchaseMembership`
-```bash
-grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"plan_id": "44444444-4444-4444-4444-444444444444", "provider": "MOMO", "discount_code": "WELCOME10"}' \
+  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQ1VTVE9NRVIiLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
+  -d '{"plan_id": "44444444-4444-4444-4444-444444444444", "provider": "MOMO"}' \
   172.20.76.101:50051 member.v1.MemberService/PurchaseMembership
 ```
 
-### 6. `PauseMembership`
+Catalog/plan listing and gym location RPCs moved to **ms-gym-plans**. Leave `discount_code` blank; nonblank codes are rejected until authoritative discount pricing exists.
+
+### 5. `PauseMembership`
 ```bash
 grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
+  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQ1VTVE9NRVIiLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
   -d '{"member_id": "31b6a40a-99d7-4f22-b6f7-f62a11298ba0"}' \
   172.20.76.101:50051 member.v1.MemberService/PauseMembership
 ```
 
-### 7. `ResumeMembership`
+### 6. `ResumeMembership`
 ```bash
 grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
+  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQ1VTVE9NRVIiLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
   -d '{"member_id": "31b6a40a-99d7-4f22-b6f7-f62a11298ba0"}' \
   172.20.76.101:50051 member.v1.MemberService/ResumeMembership
 ```
 
-### 8. `GetMembershipStatus`
+### 7. `GetMembershipStatus`
 ```bash
 grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
+  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQ1VTVE9NRVIiLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
   -d '{"member_id": "31b6a40a-99d7-4f22-b6f7-f62a11298ba0"}' \
   172.20.76.101:50051 member.v1.MemberService/GetMembershipStatus
 ```
 
 ---
 
-## 4. Gym Location Management
+## 4. Check-in / Notification Integration (Internal APIs)
 
-### 9. `CreateGymLocation`
+### 8. `ValidateMembership`
 ```bash
 grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"chain_id": "33333333-3333-3333-3333-333333333333", "name": "FitZone Q1", "address": "123 Le Loi", "city": "HCM"}' \
-  172.20.76.101:50051 member.v1.MemberService/CreateGymLocation
-```
-
-### 10. `GetGymLocation`
-```bash
-grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"id": "22222222-2222-2222-2222-222222222222"}' \
-  172.20.76.101:50051 member.v1.MemberService/GetGymLocation
-```
-
-### 11. `ListGymLocations`
-```bash
-grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"chain_id": "33333333-3333-3333-3333-333333333333"}' \
-  172.20.76.101:50051 member.v1.MemberService/ListGymLocations
-```
-
-### 12. `UpdateGymLocation`
-```bash
-grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
-  -d '{"id": "22222222-2222-2222-2222-222222222222", "name": "FitZone Q1 Updated", "address": "123 Le Loi", "city": "HCM", "status": "ACTIVE"}' \
-  172.20.76.101:50051 member.v1.MemberService/UpdateGymLocation
-```
-
----
-
-## 5. Check-in Gateway Integration (Internal APIs)
-
-### 13. `ValidateMembership`
-```bash
-grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
+  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQ0hFQ0tJTl9TRVJWSUNFIiwgImd5bV9pZCI6IjIyMjIyMjIyLTIyMjItMjIyMi0yMjIyLTIyMjIyMjIyMjIyMiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.signature" \
   -d '{"member_id": "31b6a40a-99d7-4f22-b6f7-f62a11298ba0", "gym_id": "22222222-2222-2222-2222-222222222222"}' \
   172.20.76.101:50051 member.v1.MemberService/ValidateMembership
 ```
 
-### 14. `ListMembersByStatus`
+### 9. `ListMembersByStatus`
 ```bash
 grpcurl -plaintext \
-  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiQURNSU4iLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
+  -H "authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJyb2xlIjoiTk9USUZJQ0FUSU9OX1NFUlZJQ0UiLCJneW1faWQiOiIyMjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.signature" \
   -d '{"status": "ACTIVE", "gym_ids": ["22222222-2222-2222-2222-222222222222"]}' \
   172.20.76.101:50051 member.v1.MemberService/ListMembersByStatus
 ```
 
 ---
 
-## 6. Using Local `.proto` File (Offline / No Reflection)
+## 5. Using Local `.proto` File (Offline / No Reflection)
 
 If Server Reflection is disabled, supply the `-import-path` and `-proto` arguments directly:
 

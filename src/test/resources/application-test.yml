@@ -23,6 +23,21 @@ grpc:
       enabled: false
       allow-plaintext: true
 
+app:
+  member:
+    payment:
+      target: localhost:0
+      deadline: PT3S
+      use-plaintext: true
+    plans:
+      target: localhost:0
+      deadline: PT3S
+      use-plaintext: true
+      client-cert: ""
+      client-key: ""
+      server-ca: ""
+      authority: ms-gym-plans
+
 gym:
   kafka:
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
