@@ -25,7 +25,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.util.List;
 
-import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireGym;
 import static com.gym.member.adapter.in.grpc.GrpcAccessPolicy.requireSelf;
 import static com.gym.member.adapter.in.grpc.GrpcErrorHandler.execute;
 
@@ -65,7 +64,6 @@ public class MemberGrpcDelegate {
 
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         execute(responseObserver, () -> {
-            requireGym(request.getGymId());
             NormalPage<MemberDto> page = memberUseCase.listMembers(request.getGymId(), request.getPage(), request.getLimit());
             List<GetMemberResponse> responses = page.items().stream().map(memberMapper::toGetMemberResponse).toList();
             return ListMembersResponse.newBuilder()

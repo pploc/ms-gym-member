@@ -63,15 +63,12 @@ public class GrpcConfig {
         return new AuthServerInterceptor(registry, workloadIdentityVerifier);
     }
 
-    private static final String GET_MEMBERSHIP_STATUS_BY_USER_ID =
-            "member.v1.MemberService/GetMembershipStatusByUserId";
     private static final String VALIDATE_MEMBERSHIP = "member.v1.MemberService/ValidateMembership";
     private static final String LIST_MEMBERS_BY_STATUS = "member.v1.MemberService/ListMembersByStatus";
 
     @Bean
     public static WorkloadIdentityVerifier workloadIdentityVerifier() {
         Map<String, Set<String>> methodAllowlist = Map.of(
-                GET_MEMBERSHIP_STATUS_BY_USER_ID, workloadSans("ms-gym-identifier"),
                 VALIDATE_MEMBERSHIP, workloadSans("ms-gym-checkin"),
                 LIST_MEMBERS_BY_STATUS, workloadSans("ms-gym-notification"));
         return call -> PeerCertificateIdentity.hasAllowedSan(

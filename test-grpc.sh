@@ -15,13 +15,11 @@ if [[ ! -f "$C/client-kong.crt" ]]; then
   exit 1
 fi
 
-echo "ListMembers as ADMIN via Kong cert → $MEMBER_HOST"
+echo "ListMembers as SUPER_ADMIN via Kong cert → $MEMBER_HOST"
 grpcurl \
   -cacert "$C/ca.crt" -cert "$C/client-kong.crt" -key "$C/client-kong.key" \
   -import-path "$PROTO_DIR" -proto member/v1/member.proto \
-  -H "x-user-id: admin-1" \
-  -H "x-user-role: ADMIN" \
-  -H "x-gym-id: $GYM_ID" \
-  -H "x-membership-status: NONE" \
+  -H "x-user-id: super-1" \
+  -H "x-user-role: SUPER_ADMIN" \
   -d "{\"gymId\":\"$GYM_ID\",\"page\":0,\"limit\":10}" \
   "$MEMBER_HOST" member.v1.MemberService/ListMembers

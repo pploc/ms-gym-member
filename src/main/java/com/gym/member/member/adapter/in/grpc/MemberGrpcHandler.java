@@ -5,8 +5,6 @@ import com.gym.common.grpc.security.RequireRole;
 import com.gym.common.grpc.security.RpcPolicyKind;
 import com.gym.proto.member.v1.GetMemberRequest;
 import com.gym.proto.member.v1.GetMemberResponse;
-import com.gym.proto.member.v1.GetMembershipStatusByUserIdRequest;
-import com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse;
 import com.gym.proto.member.v1.GetMembershipStatusRequest;
 import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.ListMembersByStatusRequest;
@@ -36,19 +34,19 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     private final SubscriptionGrpcDelegate subscriptionGrpcDelegate;
 
     @Override
-    @RequireRole("CUSTOMER")
+    @RequireRole({"CUSTOMER", "SUPER_ADMIN"})
     public void getMember(GetMemberRequest request, StreamObserver<GetMemberResponse> responseObserver) {
         memberGrpcDelegate.getMember(request, responseObserver);
     }
 
     @Override
-    @RequireRole("CUSTOMER")
+    @RequireRole({"CUSTOMER", "SUPER_ADMIN"})
     public void updateProfile(UpdateProfileRequest request, StreamObserver<UpdateProfileResponse> responseObserver) {
         memberGrpcDelegate.updateProfile(request, responseObserver);
     }
 
     @Override
-    @RequireRole({"ADMIN", "SUPER_ADMIN"})
+    @RequireRole("SUPER_ADMIN")
     public void listMembers(ListMembersRequest request, StreamObserver<ListMembersResponse> responseObserver) {
         memberGrpcDelegate.listMembers(request, responseObserver);
     }
@@ -73,17 +71,10 @@ public class MemberGrpcHandler extends MemberServiceGrpc.MemberServiceImplBase {
     }
 
     @Override
-    @RequireRole("CUSTOMER")
+    @RequireRole({"CUSTOMER", "SUPER_ADMIN"})
     public void getMembershipStatus(
             GetMembershipStatusRequest request, StreamObserver<GetMembershipStatusResponse> responseObserver) {
         subscriptionGrpcDelegate.getMembershipStatus(request, responseObserver);
-    }
-
-    @Override
-    @RequirePolicy(RpcPolicyKind.INTERNAL_WORKLOAD)
-    public void getMembershipStatusByUserId(
-            GetMembershipStatusByUserIdRequest request, StreamObserver<GetMembershipStatusByUserIdResponse> responseObserver) {
-        subscriptionGrpcDelegate.getMembershipStatusByUserId(request, responseObserver);
     }
 
     @Override

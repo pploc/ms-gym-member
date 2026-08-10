@@ -4,7 +4,6 @@ import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.member.shared.mapper.CommonMapperUtils;
 import com.gym.member.shared.mapper.ProtoEnums;
-import com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse;
 import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.PauseMembershipResponse;
 import com.gym.proto.member.v1.ResumeMembershipResponse;
@@ -43,16 +42,6 @@ public interface SubscriptionMapper {
 
     default GetMembershipStatusResponse toStatusResponse(SubscriptionDto dto) {
         return GetMembershipStatusResponse.newBuilder()
-                .setMemberId(memberId(dto))
-                .setStatus(ProtoEnums.toProto(dto.status()))
-                .setStartDate(date(dto.startDate()))
-                .setEndDate(date(dto.endDate()))
-                .setRemainingDays(dto.remainingDays() == null ? 0 : dto.remainingDays())
-                .build();
-    }
-
-    default GetMembershipStatusByUserIdResponse toStatusByUserIdResponse(SubscriptionDto dto) {
-        return GetMembershipStatusByUserIdResponse.newBuilder()
                 .setMemberId(memberId(dto))
                 .setStatus(ProtoEnums.toProto(dto.status()))
                 .setStartDate(date(dto.startDate()))

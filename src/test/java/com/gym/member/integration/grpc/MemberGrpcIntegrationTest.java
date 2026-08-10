@@ -13,7 +13,6 @@ import com.gym.member.member.adapter.out.persistence.repository.SubscriptionJpaR
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.member.domain.model.PlanType;
 import com.gym.proto.member.v1.GetMemberRequest;
-import com.gym.proto.member.v1.GetMembershipStatusByUserIdRequest;
 import com.gym.proto.member.v1.ListMembersRequest;
 import com.gym.proto.member.v1.ListMembersResponse;
 import com.gym.proto.member.v1.GetMemberResponse;
@@ -207,7 +206,7 @@ class MemberGrpcIntegrationTest {
                 .setLimit(10)
                 .build();
         MemberServiceGrpc.MemberServiceBlockingStub stub =
-                getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", gymId);
+                getStubWithHeaders(UUID.randomUUID().toString(), "SUPER_ADMIN", null);
 
         ListMembersResponse response = stub.listMembers(request);
 
@@ -254,33 +253,21 @@ class MemberGrpcIntegrationTest {
     }
 
     @Test
-    void givenDifferentGymScope_whenListMembers_thenThrowsPermissionDenied() {
-        String otherGymId = UUID.randomUUID().toString();
+    void given_admin_role_when_list_members_then_throws_permission_denied() {
+        // given
         ListMembersRequest request = ListMembersRequest.newBuilder()
                 .setGymId(gymId)
                 .setPage(0)
                 .setLimit(10)
                 .build();
         MemberServiceGrpc.MemberServiceBlockingStub stub =
-                getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", otherGymId);
+                getStubWithHeaders(UUID.randomUUID().toString(), "ADMIN", gymId);
 
+        // when
         StatusRuntimeException exception = assertThrows(StatusRuntimeException.class, () -> stub.listMembers(request));
 
+        // then
         assertThat(exception.getStatus().getCode())
                 .isIn(Status.Code.PERMISSION_DENIED, Status.Code.FAILED_PRECONDITION);
-    }
-
-    @Test
-    void givenAdminRole_whenGetMembershipStatusByUserId_thenReturnsSuccess() {
-        GetMembershipStatusByUserIdRequest request = GetMembershipStatusByUserIdRequest.newBuilder()
-                .setUserId(userId)
-                .setGymId(gymId)
-                .build();
-
-        com.gym.proto.member.v1.GetMembershipStatusByUserIdResponse response = blockingStub.getMembershipStatusByUserId(request);
-        assertThat(response).isNotNull();
-        assertThat(response.getMemberId()).isEqualTo(memberId);
-        assertThat(response.getStatus())
-                .isEqualTo(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE);
     }
 }

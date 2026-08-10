@@ -16,7 +16,7 @@ It does **not** own gym locations or plan catalog data. Those live in **ms-gym-p
 - Subscription state machine (`NONE` / `ACTIVE` / `PAUSED` / `EXPIRED`) with multi-gym aggregate status
 - Durable purchase initiation (`idempotency_key` → stable `purchase_id` as Payment `reference_id`)
 - Outbox lifecycle events and atomic Kafka consumer claims
-- Workload RPCs for Identifier, Check-in, and Notification over verified mTLS SAN
+- Workload RPCs for Check-in and Notification over verified mTLS SAN
 
 ---
 
@@ -25,11 +25,10 @@ It does **not** own gym locations or plan catalog data. Those live in **ms-gym-p
 | Path | Peer SAN | Notes |
 |------|----------|-------|
 | End-user RPCs | Kong | Kong verifies JWT, injects `x-user-*`; Member accepts those headers only from Kong SAN |
-| `GetMembershipStatusByUserId` | `ms-gym-identifier` | no user claims |
 | `ValidateMembership` | `ms-gym-checkin` | no user claims |
 | `ListMembersByStatus` | `ms-gym-notification` | requires ≥1 `gym_ids` |
 
-NetworkPolicy (Helm overlay) admits gRPC `50051` from Kong + those three workloads only. HTTP `8080` is actuator/health.
+NetworkPolicy (Helm overlay) admits gRPC `50051` from Kong + those two workloads only. HTTP `8080` is actuator/health.
 
 Internal methods are never Kong-routed. Public REST is deferred until a generated gRPC-Gateway exists.
 
@@ -101,7 +100,7 @@ Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCe
 
 ### Shared libraries
 - `com.gym:common-java:2.1.0`
-- `com.gym.proto:gym-proto-java:4.1.0`
+- `com.gym.proto:gym-proto-java:5.0.0`
 
 ---
 

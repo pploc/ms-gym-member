@@ -6,5 +6,4 @@ public interface SubscriptionLifecycleUseCase {
     SubscriptionDto pauseSubscription(String memberId, String gymId);
     SubscriptionDto resumeSubscription(String memberId, String gymId);
     SubscriptionDto getActiveSubscription(String memberId, String gymId);
-    SubscriptionDto getMembershipStatusByUserIdAndGymId(String userId, String gymId);
 }

@@ -26,8 +26,6 @@ import static org.mockito.Mockito.when;
 
 class GrpcConfigUnitTest {
 
-    private static final String GET_MEMBERSHIP_STATUS_BY_USER_ID =
-            "member.v1.MemberService/GetMembershipStatusByUserId";
     private static final String VALIDATE_MEMBERSHIP = "member.v1.MemberService/ValidateMembership";
     private static final String LIST_MEMBERS_BY_STATUS = "member.v1.MemberService/ListMembersByStatus";
 
@@ -42,37 +40,6 @@ class GrpcConfigUnitTest {
             mock(com.gym.common.grpc.interceptor.ValidationInterceptor.class));
 
     private final WorkloadIdentityVerifier verifier = GrpcConfig.workloadIdentityVerifier();
-
-    @Test
-    void given_identifier_dns_san_on_status_by_user_id_when_verify_workload_identity_then_accepts() throws Exception {
-        // given
-        ServerCall<?, ?> call = callWithSan(GET_MEMBERSHIP_STATUS_BY_USER_ID, List.of(List.of(2, "ms-gym-identifier")));
-
-        // when / then
-        assertTrue(verifier.isVerified(call));
-    }
-
-    @Test
-    void given_identifier_spiffe_san_on_status_by_user_id_when_verify_workload_identity_then_accepts() throws Exception {
-        // given
-        ServerCall<?, ?> call = callWithSan(
-                GET_MEMBERSHIP_STATUS_BY_USER_ID,
-                List.of(List.of(6, "spiffe://gym.cluster.local/ns/default/sa/ms-gym-identifier")));
-
-        // when / then
-        assertTrue(verifier.isVerified(call));
-    }
-
-    @Test
-    void given_gym_system_identifier_spiffe_san_when_verify_workload_identity_then_accepts() throws Exception {
-        // given
-        ServerCall<?, ?> call = callWithSan(
-                GET_MEMBERSHIP_STATUS_BY_USER_ID,
-                List.of(List.of(6, "spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-identifier")));
-
-        // when / then
-        assertTrue(verifier.isVerified(call));
-    }
 
     @Test
     void given_checkin_san_on_validate_membership_when_verify_workload_identity_then_accepts() throws Exception {
@@ -93,15 +60,6 @@ class GrpcConfigUnitTest {
     }
 
     @Test
-    void given_checkin_san_on_status_by_user_id_when_verify_workload_identity_then_rejects() throws Exception {
-        // given
-        ServerCall<?, ?> call = callWithSan(GET_MEMBERSHIP_STATUS_BY_USER_ID, List.of(List.of(2, "ms-gym-checkin")));
-
-        // when / then
-        assertFalse(verifier.isVerified(call));
-    }
-
-    @Test
     void given_identifier_san_on_validate_membership_when_verify_workload_identity_then_rejects() throws Exception {
         // given
         ServerCall<?, ?> call = callWithSan(VALIDATE_MEMBERSHIP, List.of(List.of(2, "ms-gym-identifier")));
@@ -114,7 +72,7 @@ class GrpcConfigUnitTest {
     void given_missing_tls_session_when_verify_workload_identity_then_rejects() {
         // given
         ServerCall<Object, Object> call = mock(ServerCall.class);
-        doReturn(method(GET_MEMBERSHIP_STATUS_BY_USER_ID)).when(call).getMethodDescriptor();
+        doReturn(method(VALIDATE_MEMBERSHIP)).when(call).getMethodDescriptor();
         when(call.getAttributes()).thenReturn(Attributes.EMPTY);
 
         // when / then
@@ -153,7 +111,7 @@ class GrpcConfigUnitTest {
     void given_wrong_or_non_identity_san_when_verify_workload_identity_then_rejects() throws Exception {
         // given
         ServerCall<?, ?> call = callWithSan(
-                GET_MEMBERSHIP_STATUS_BY_USER_ID,
+                VALIDATE_MEMBERSHIP,
                 List.of(List.of(2, "ms-gym-payment"), List.of(1, "ms-gym-identifier")));
 
         // when / then

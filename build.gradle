@@ -65,7 +65,7 @@ def testcontainersVersion = '1.20.1'
 
 dependencies {
     implementation 'com.gym:common-java:2.1.1'
-    implementation 'com.gym.proto:gym-proto-java:4.1.0'
+    implementation 'com.gym.proto:gym-proto-java:5.0.0'
     implementation('com.google.protobuf:protobuf-java') {
         version { strictly '4.33.5' }
     }
@@ -178,8 +178,8 @@ set -eu
 need=
 for f in certs/local/server.crt certs/local/server.key certs/local/ca.crt \
          certs/local/client-kong.crt certs/local/client-kong.key \
-         certs/local/client-identifier.crt certs/local/client-checkin.crt \
-         certs/local/client-notification.crt; do
+         certs/local/client-member.crt certs/local/client-member.key \
+         certs/local/client-checkin.crt certs/local/client-notification.crt; do
   if [ ! -f "$f" ]; then need=1; break; fi
 done
 if [ -n "$need" ]; then

@@ -28,6 +28,7 @@ import com.gym.proto.member.v1.PauseMembershipResponse;
 import com.gym.proto.member.v1.ResumeMembershipResponse;
 import com.gym.proto.member.v1.GetMembershipStatusResponse;
 import com.gym.proto.member.v1.PauseMembershipRequest;
+import com.gym.proto.member.v1.PurchaseMembershipBody;
 import com.gym.proto.member.v1.PurchaseMembershipRequest;
 import com.gym.proto.member.v1.PurchaseMembershipResponse;
 import com.gym.proto.member.v1.ResumeMembershipRequest;
@@ -193,7 +194,7 @@ class MemberGrpcHandlerUnitTest {
         NormalPage<MemberDto> normalPage = new NormalPage<>(List.of(memberDto), 0, 10, 1L, 1);
         when(memberService.listMembers(gymId.toString(), 0, 10)).thenReturn(normalPage);
 
-        runWithClaims(userId.toString(), "ADMIN", gymId.toString(), () ->
+        runWithClaims(userId.toString(), "SUPER_ADMIN", null, () ->
                 memberGrpcHandler.listMembers(request, responseObserver));
 
         verify(responseObserver, times(1)).onNext(any(ListMembersResponse.class));
@@ -214,9 +215,11 @@ class MemberGrpcHandlerUnitTest {
         // given
         String planId = UUID.randomUUID().toString();
         PurchaseMembershipRequest request = PurchaseMembershipRequest.newBuilder()
-                .setPlanId(planId)
-                .setProvider("STRIPE")
-                .setIdempotencyKey("key-1")
+                .setGymId(gymId.toString())
+                .setPurchase(PurchaseMembershipBody.newBuilder()
+                        .setPlanId(planId)
+                        .setProvider("STRIPE")
+                        .setIdempotencyKey("key-1"))
                 .build();
         when(memberService.getMemberByUserId(userId.toString())).thenReturn(memberDto);
         when(membershipPurchaseUseCase.purchaseMembership(
@@ -235,7 +238,10 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMemberId_whenPauseMembership_thenReturnsPauseMembershipResponse() {
         PauseMembershipRequest request =
-                PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
+                PauseMembershipRequest.newBuilder()
+                        .setMemberId(memberId.toString())
+                        .setGymId(gymId.toString())
+                        .build();
         SubscriptionDto subDto = new SubscriptionDto(
                 UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.PAUSED,
                 LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
@@ -253,7 +259,10 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenErrorOnPauseMembership_whenPauseMembership_thenCallsOnError() {
         PauseMembershipRequest request =
-                PauseMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
+                PauseMembershipRequest.newBuilder()
+                        .setMemberId(memberId.toString())
+                        .setGymId(gymId.toString())
+                        .build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
         when(subscriptionLifecycleUseCase.pauseSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
@@ -264,7 +273,10 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMemberId_whenResumeMembership_thenReturnsResumeMembershipResponse() {
         ResumeMembershipRequest request =
-                ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
+                ResumeMembershipRequest.newBuilder()
+                        .setMemberId(memberId.toString())
+                        .setGymId(gymId.toString())
+                        .build();
         SubscriptionDto subDto = new SubscriptionDto(
                 UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
@@ -282,7 +294,10 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenErrorOnResumeMembership_whenResumeMembership_thenCallsOnError() {
         ResumeMembershipRequest request =
-                ResumeMembershipRequest.newBuilder().setMemberId(memberId.toString()).build();
+                ResumeMembershipRequest.newBuilder()
+                        .setMemberId(memberId.toString())
+                        .setGymId(gymId.toString())
+                        .build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
         when(subscriptionLifecycleUseCase.resumeSubscription(any(), any())).thenThrow(new RuntimeException("Error"));
 
@@ -293,7 +308,10 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenValidMemberId_whenGetMembershipStatus_thenReturnsGetMembershipStatusResponse() {
         GetMembershipStatusRequest request =
-                GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
+                GetMembershipStatusRequest.newBuilder()
+                        .setMemberId(memberId.toString())
+                        .setGymId(gymId.toString())
+                        .build();
         SubscriptionDto subDto = new SubscriptionDto(
                 UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.ACTIVE,
                 LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
@@ -311,7 +329,10 @@ class MemberGrpcHandlerUnitTest {
     @Test
     void givenErrorOnGetMembershipStatus_whenGetMembershipStatus_thenCallsOnError() {
         GetMembershipStatusRequest request =
-                GetMembershipStatusRequest.newBuilder().setMemberId(memberId.toString()).build();
+                GetMembershipStatusRequest.newBuilder()
+                        .setMemberId(memberId.toString())
+                        .setGymId(gymId.toString())
+                        .build();
         when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
         when(subscriptionLifecycleUseCase.getActiveSubscription(any(), any()))
                 .thenThrow(new RuntimeException("Error"));

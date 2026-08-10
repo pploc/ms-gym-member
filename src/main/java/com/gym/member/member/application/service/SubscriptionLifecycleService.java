@@ -24,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -128,32 +126,5 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
                 .orElseThrow(() -> new NotFoundException(
                         "No active or paused subscription found for member: " + memberId + " at gym: " + gymId));
         return subscriptionMapper.toDto(sub);
-    }
-
-    @Transactional(readOnly = true)
-    public SubscriptionDto getMembershipStatusByUserIdAndGymId(String userId, String gymId) {
-        MemberEntity member = memberRepository.findByUserId(userId)
-                .orElseThrow(() -> new NotFoundException("Member not found for user: " + userId));
-
-        Optional<SubscriptionEntity> subOpt = subscriptionRepository
-                .findByMemberIdAndGymIdAndStatus(member.getId(), gymId, MembershipStatus.ACTIVE)
-                .or(() -> subscriptionRepository.findByMemberIdAndGymIdAndStatus(
-                        member.getId(), gymId, MembershipStatus.PAUSED));
-
-        if (subOpt.isPresent()) {
-            return subscriptionMapper.toDto(subOpt.get());
-        }
-
-        return new SubscriptionDto(
-                null,
-                UUID.fromString(member.getId()),
-                UUID.fromString(gymId),
-                null,
-                MembershipStatus.NONE,
-                null,
-                null,
-                null,
-                0,
-                0);
     }
 }

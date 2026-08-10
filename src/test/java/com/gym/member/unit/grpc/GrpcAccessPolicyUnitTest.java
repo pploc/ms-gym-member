@@ -40,35 +40,42 @@ class GrpcAccessPolicyUnitTest {
     }
 
     @Test
-    void given_mismatch_gym_id_when_require_gym_then_throws_forbidden_exception() {
+    void given_admin_when_require_self_for_another_user_then_throws_forbidden_exception() {
         // given
-        UserClaims claims = new UserClaims("user-1", "ADMIN", "gym-1", null);
+        UserClaims claims = new UserClaims("admin-1", "ADMIN", "gym-1", null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
+        MemberDto member = new MemberDto(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Name",
+                null,
+                null,
+                null,
+                MembershipStatus.ACTIVE,
+                Instant.now(),
+                Instant.now());
 
         // when / then
-        ctx.run(() -> assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGym("gym-2")));
+        ctx.run(() -> assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireSelf(member)));
     }
 
     @Test
-    void given_blank_gym_id_when_require_gym_for_admin_then_throws_forbidden_exception() {
-        // given
-        UserClaims claims = new UserClaims("user-1", "ADMIN", "gym-1", null);
-        Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
-
-        // when / then
-        ctx.run(() -> assertThrows(ForbiddenException.class, () -> GrpcAccessPolicy.requireGym("")));
-    }
-
-    @Test
-    void given_super_admin_when_require_gym_then_returns_without_exception() {
+    void given_super_admin_when_require_self_for_another_user_then_returns_without_exception() {
         // given
         UserClaims claims = new UserClaims("admin-1", "SUPER_ADMIN", null, null);
         Context ctx = Context.current().withValue(GrpcSecurityContext.CLAIMS_KEY, claims);
+        MemberDto member = new MemberDto(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                "Name",
+                null,
+                null,
+                null,
+                MembershipStatus.ACTIVE,
+                Instant.now(),
+                Instant.now());
 
         // when / then
-        ctx.run(() -> {
-            assertDoesNotThrow(() -> GrpcAccessPolicy.requireGym("gym-2"));
-            assertDoesNotThrow(() -> GrpcAccessPolicy.requireGym(null));
-        });
+        ctx.run(() -> assertDoesNotThrow(() -> GrpcAccessPolicy.requireSelf(member)));
     }
 }

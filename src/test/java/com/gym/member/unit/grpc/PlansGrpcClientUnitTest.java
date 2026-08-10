@@ -49,8 +49,8 @@ class PlansGrpcClientUnitTest {
                 "localhost:59999",
                 Duration.ofMillis(100),
                 false,
-                "certs/local/client-identifier.crt",
-                "certs/local/client-identifier.key",
+                "certs/local/client-member.crt",
+                "certs/local/client-member.key",
                 "certs/local/ca.crt",
                 "ms-gym-plans");
         MemberProperties properties = new MemberProperties(null, null, null, null, plansProps, false);
@@ -81,8 +81,8 @@ class PlansGrpcClientUnitTest {
                 "localhost:59998",
                 Duration.ofMillis(100),
                 false,
-                "certs/local/client-identifier.crt",
-                "certs/local/client-identifier.key",
+                "certs/local/client-member.crt",
+                "certs/local/client-member.key",
                 "certs/local/ca.crt",
                 "");
         MemberProperties properties = new MemberProperties(null, null, null, null, plansProps, false);
