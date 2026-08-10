@@ -12,6 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PlansGrpcClientUnitTest {
 
+    // Checked-in PEMs under src/test/resources (local certs/ is gitignored).
+    private static final String TEST_CLIENT_CERT = "src/test/resources/mtls/client.crt";
+    private static final String TEST_CLIENT_KEY = "src/test/resources/mtls/client.key";
+    private static final String TEST_CA_CERT = "src/test/resources/mtls/ca.crt";
+
     @Test
     void givenUnconfiguredTarget_whenResolvePurchasablePlan_thenThrowsUnavailable() {
         MemberProperties.PlansProperties plansProps =
@@ -49,9 +54,9 @@ class PlansGrpcClientUnitTest {
                 "localhost:59999",
                 Duration.ofMillis(100),
                 false,
-                "certs/local/client-member.crt",
-                "certs/local/client-member.key",
-                "certs/local/ca.crt",
+                TEST_CLIENT_CERT,
+                TEST_CLIENT_KEY,
+                TEST_CA_CERT,
                 "ms-gym-plans");
         MemberProperties properties = new MemberProperties(null, null, null, null, plansProps, false);
 
@@ -66,9 +71,9 @@ class PlansGrpcClientUnitTest {
                 "localhost:50053",
                 Duration.ofSeconds(3),
                 false,
-                "certs/local/missing-client.crt",
-                "certs/local/missing-client.key",
-                "certs/local/missing-ca.crt",
+                "src/test/resources/mtls/missing-client.crt",
+                "src/test/resources/mtls/missing-client.key",
+                "src/test/resources/mtls/missing-ca.crt",
                 "ms-gym-plans");
         MemberProperties properties = new MemberProperties(null, null, null, null, plansProps, false);
 
@@ -81,9 +86,9 @@ class PlansGrpcClientUnitTest {
                 "localhost:59998",
                 Duration.ofMillis(100),
                 false,
-                "certs/local/client-member.crt",
-                "certs/local/client-member.key",
-                "certs/local/ca.crt",
+                TEST_CLIENT_CERT,
+                TEST_CLIENT_KEY,
+                TEST_CA_CERT,
                 "");
         MemberProperties properties = new MemberProperties(null, null, null, null, plansProps, false);
 
