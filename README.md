@@ -24,13 +24,13 @@ It does **not** own gym locations or plan catalog data. Those live in **ms-gym-p
 
 | Path | Peer SAN | Notes |
 |------|----------|-------|
-| End-user RPCs | Kong | Kong verifies JWT, injects `x-user-*`; Member accepts those headers only from Kong SAN |
+| End-user RPCs | `ms-gym-api-gateway` | Kong verifies JWT and forwards trusted `x-user-*` through generated gateway; Member accepts them only from gateway SAN |
 | `ValidateMembership` | `ms-gym-checkin` | no user claims |
 | `ListMembersByStatus` | `ms-gym-notification` | requires ≥1 `gym_ids` |
 
-NetworkPolicy (Helm overlay) admits gRPC `50051` from Kong + those two workloads only. HTTP `8080` is actuator/health.
+NetworkPolicy (Helm overlay) admits gRPC `50051` from generated gateway + those two workloads only. HTTP `8080` is actuator/health.
 
-Internal methods are never Kong-routed. Public REST is deferred until a generated gRPC-Gateway exists.
+Internal methods are never Kong-routed. Public REST reaches generated gRPC-Gateway through Kong.
 
 ---
 

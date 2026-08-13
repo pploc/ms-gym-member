@@ -35,6 +35,7 @@ issue() {
 }
 
 issue server 'DNS:localhost,DNS:ms-gym-member,IP:127.0.0.1' serverAuth
+issue client-gateway 'DNS:ms-gym-api-gateway,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-api-gateway' clientAuth
 issue client-kong 'DNS:kong,URI:spiffe://gym.cluster.local/ns/gym-system/sa/kong' clientAuth
 issue client-member 'DNS:ms-gym-member,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-member' clientAuth
 issue client-checkin 'DNS:ms-gym-checkin,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-checkin' clientAuth
@@ -51,6 +52,7 @@ p12() {
     -name "$name" >/dev/null 2>&1
 }
 
+p12 client-gateway
 p12 client-kong
 p12 client-member
 p12 client-checkin
@@ -69,14 +71,14 @@ Server env (or rely on application.yml defaults + bootRun ensureLocalCerts):
   export MEMBER_GRPC_SERVER_KEY=$out/server.key
   export MEMBER_GRPC_CLIENT_CA=$out/ca.crt
 
-End-user RPCs: client-kong.p12 + Kong-verified x-user-id / x-user-role metadata
+End-user RPCs: client-gateway.p12 + gateway-forwarded x-user-id / x-user-role metadata
 Plans client: client-member.p12
 ValidateMembership: client-checkin.p12
 ListMembersByStatus: client-notification.p12
 
 grpcurl end-user example:
   grpcurl -cacert $out/ca.crt \\
-    -cert $out/client-kong.crt -key $out/client-kong.key \\
+    -cert $out/client-gateway.crt -key $out/client-gateway.key \\
     -H 'x-user-id: u1' -H 'x-user-role: CUSTOMER' \\
     -d '{"memberId":"..."}' localhost:50051 member.v1.MemberService/GetMember
 EOF

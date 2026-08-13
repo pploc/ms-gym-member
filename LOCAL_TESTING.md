@@ -6,7 +6,7 @@ Copy-paste examples for the current `member.v1` Stage 0 contract (`gym-proto` `5
 
 | Caller | Certificate SAN | Allowed methods |
 |---|---|---|
-| End user through Kong | `kong` / SPIFFE `.../sa/kong` | Public Member methods with verified `x-user-id` and `x-user-role` |
+| End user through generated gateway | `ms-gym-api-gateway` / SPIFFE `.../sa/ms-gym-api-gateway` | Public Member methods with gateway-forwarded `x-user-id` and `x-user-role` |
 | Check-in | `ms-gym-checkin` | `ValidateMembership` only |
 | Notification | `ms-gym-notification` | `ListMembersByStatus` only |
 
@@ -25,7 +25,7 @@ cd ms-gym-member
 ```bash
 PROTO_DIR=../gym-proto/proto
 C=certs/local
-MTLS_KONG=(-cacert "$C/ca.crt" -cert "$C/client-kong.crt" -key "$C/client-kong.key")
+MTLS_GATEWAY=(-cacert "$C/ca.crt" -cert "$C/client-gateway.crt" -key "$C/client-gateway.key")
 MTLS_CHECKIN=(-cacert "$C/ca.crt" -cert "$C/client-checkin.crt" -key "$C/client-checkin.key")
 MTLS_NOTIF=(-cacert "$C/ca.crt" -cert "$C/client-notification.crt" -key "$C/client-notification.key")
 H_CUSTOMER=(-H 'x-user-id: 11111111-1111-1111-1111-111111111111' -H 'x-user-role: CUSTOMER')
@@ -39,7 +39,7 @@ Gym context comes from request fields, never trusted headers.
 ### ListMembers — `SUPER_ADMIN` only
 
 ```bash
-grpcurl "${MTLS_KONG[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H_SUPER[@]}" \
+grpcurl "${MTLS_GATEWAY[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H_SUPER[@]}" \
   -d '{"gymId":"22222222-2222-2222-2222-222222222222","page":0,"limit":10}' \
   localhost:50051 member.v1.MemberService/ListMembers
 ```
@@ -47,7 +47,7 @@ grpcurl "${MTLS_KONG[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.prot
 ### PurchaseMembership — customer self only
 
 ```bash
-grpcurl "${MTLS_KONG[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H_CUSTOMER[@]}" \
+grpcurl "${MTLS_GATEWAY[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H_CUSTOMER[@]}" \
   -d '{
     "gymId":"22222222-2222-2222-2222-222222222222",
     "purchase":{
@@ -63,7 +63,7 @@ grpcurl "${MTLS_KONG[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.prot
 ### GetMembershipStatus — customer self or `SUPER_ADMIN`
 
 ```bash
-grpcurl "${MTLS_KONG[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H_CUSTOMER[@]}" \
+grpcurl "${MTLS_GATEWAY[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto "${H_CUSTOMER[@]}" \
   -d '{
     "gymId":"22222222-2222-2222-2222-222222222222",
     "memberId":"31b6a40a-99d7-4f22-b6f7-f62a11298ba0"

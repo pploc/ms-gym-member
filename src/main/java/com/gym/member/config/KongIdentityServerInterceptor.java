@@ -12,10 +12,10 @@ import java.util.Set;
 
 public final class KongIdentityServerInterceptor implements ServerInterceptor {
 
-    private static final Set<String> KONG_SANS = Set.of(
-            "kong",
-            "spiffe://gym.cluster.local/ns/default/sa/kong",
-            "spiffe://gym.cluster.local/ns/gym-system/sa/kong");
+    private static final Set<String> GATEWAY_SANS = Set.of(
+            "ms-gym-api-gateway",
+            "spiffe://gym.cluster.local/ns/default/sa/ms-gym-api-gateway",
+            "spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-api-gateway");
 
     private final GrpcMethodRegistry methodRegistry;
 
@@ -32,8 +32,8 @@ public final class KongIdentityServerInterceptor implements ServerInterceptor {
         if (policy != null
                 && policy.kind() != RpcPolicyKind.PUBLIC
                 && policy.kind() != RpcPolicyKind.INTERNAL_WORKLOAD
-                && !PeerCertificateIdentity.hasAllowedSan(call, KONG_SANS)) {
-            call.close(Status.PERMISSION_DENIED.withDescription("Verified Kong identity is required"), new Metadata());
+                && !PeerCertificateIdentity.hasAllowedSan(call, GATEWAY_SANS)) {
+            call.close(Status.PERMISSION_DENIED.withDescription("Verified gateway identity is required"), new Metadata());
             return new ServerCall.Listener<>() {};
         }
         return next.startCall(call, headers);

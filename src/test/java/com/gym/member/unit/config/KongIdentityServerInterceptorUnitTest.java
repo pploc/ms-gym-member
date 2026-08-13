@@ -47,11 +47,11 @@ class KongIdentityServerInterceptorUnitTest {
     private ServerCall.Listener<Object> listener;
 
     @Test
-    void given_kong_san_on_end_user_rpc_when_intercept_then_continues() throws Exception {
+    void given_gateway_san_on_end_user_rpc_when_intercept_then_continues() throws Exception {
         // given
         when(registry.getPolicy(END_USER_METHOD))
                 .thenReturn(new GrpcMethodRegistry.MethodPolicy(RpcPolicyKind.ROLE_RESTRICTED, new String[] {"CUSTOMER"}));
-        ServerCall<Object, Object> call = callWithSan(END_USER_METHOD, "kong");
+        ServerCall<Object, Object> call = callWithSan(END_USER_METHOD, "ms-gym-api-gateway");
         when(next.startCall(any(), any())).thenReturn(listener);
         KongIdentityServerInterceptor interceptor = new KongIdentityServerInterceptor(registry);
 
