@@ -65,7 +65,7 @@ def testcontainersVersion = '1.20.1'
 
 dependencies {
     implementation 'com.gym:common-java:2.1.1'
-    implementation 'com.gym.proto:gym-proto-java:5.0.0'
+    implementation 'com.gym.proto:gym-proto-java:6.0.0'
     implementation('com.google.protobuf:protobuf-java') {
         version { strictly '4.33.5' }
     }
