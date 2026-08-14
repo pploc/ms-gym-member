@@ -36,7 +36,8 @@ jobs:
       context: .
       push: true
       max_tags: 20
-    secrets: inherit
+    secrets:
+      github_token: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
       packages: write
