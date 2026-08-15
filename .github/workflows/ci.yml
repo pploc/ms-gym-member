@@ -13,7 +13,7 @@ permissions:
 jobs:
   java-ci:
     name: Lint, tests, coverage
-    uses: pploc/gym-infra/.github/workflows/java-ci.yml@develop
+    uses: pploc/gym-infra/.github/workflows/java-ci.yml@4aa5f289f526b3fc2bb22790fe6e0dc2b49fe243
     with:
       service_path: .
       java_version: '26'
@@ -30,14 +30,12 @@ jobs:
         startsWith(github.ref, 'refs/heads/feature/') ||
         startsWith(github.ref, 'refs/heads/hotfix/')
       )
-    uses: pploc/gym-infra/.github/workflows/docker-build.yml@develop
+    uses: pploc/gym-infra/.github/workflows/docker-build.yml@4aa5f289f526b3fc2bb22790fe6e0dc2b49fe243
     with:
       service_name: ms-gym-member
       context: .
       push: true
       max_tags: 20
-    secrets:
-      github_token: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: read
       packages: write
