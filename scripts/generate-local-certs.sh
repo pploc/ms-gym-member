@@ -37,6 +37,8 @@ issue() {
 issue server 'DNS:localhost,DNS:ms-gym-member,IP:127.0.0.1' serverAuth
 issue client-gateway 'DNS:ms-gym-api-gateway,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-api-gateway' clientAuth
 issue client-kong 'DNS:kong,URI:spiffe://gym.cluster.local/ns/gym-system/sa/kong' clientAuth
+issue client-postman 'DNS:postman-local' clientAuth
+issue client-identifier 'DNS:ms-gym-identifier,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-identifier' clientAuth
 issue client-member 'DNS:ms-gym-member,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-member' clientAuth
 issue client-checkin 'DNS:ms-gym-checkin,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-checkin' clientAuth
 issue client-notification 'DNS:ms-gym-notification,URI:spiffe://gym.cluster.local/ns/gym-system/sa/ms-gym-notification' clientAuth
@@ -54,6 +56,8 @@ p12() {
 
 p12 client-gateway
 p12 client-kong
+p12 client-postman
+p12 client-identifier
 p12 client-member
 p12 client-checkin
 p12 client-notification

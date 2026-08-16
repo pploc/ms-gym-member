@@ -7,8 +7,11 @@ import com.gym.member.member.adapter.out.persistence.entity.SubscriptionEntity;
 import com.gym.member.member.adapter.out.persistence.mapper.SubscriptionMapper;
 import com.gym.member.member.adapter.out.persistence.repository.MemberJpaRepository;
 import com.gym.member.member.adapter.out.persistence.repository.SubscriptionJpaRepository;
+import com.gym.member.member.adapter.out.persistence.specification.MemberSpecifications;
+import com.gym.member.member.adapter.out.persistence.specification.SubscriptionSpecifications;
 import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.member.domain.constant.MemberEventTopics;
+import com.gym.member.member.domain.dto.MembershipValidation;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.member.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.member.domain.exception.MaxPausesExceededException;
@@ -126,5 +129,40 @@ public class SubscriptionLifecycleService implements SubscriptionLifecycleUseCas
                 .orElseThrow(() -> new NotFoundException(
                         "No active or paused subscription found for member: " + memberId + " at gym: " + gymId));
         return subscriptionMapper.toDto(sub);
+    }
+
+    @Transactional(readOnly = true)
+    public MembershipValidation validateMembership(String userId, String gymId) {
+        MemberEntity member = memberRepository.findOne(MemberSpecifications.hasUserId(userId))
+                .orElseThrow(() -> new NotFoundException("Member not found for user: " + userId));
+        LocalDate today = LocalDate.now(clock);
+        MembershipStatus status = subscriptionRepository.findAll(
+                        SubscriptionSpecifications.hasMemberId(member.getId())
+                                .and(SubscriptionSpecifications.hasGymId(gymId)))
+                .stream()
+                .map(subscription -> effectiveStatus(subscription, today))
+                .reduce(MembershipStatus.NONE, SubscriptionLifecycleService::higherPriority);
+        return new MembershipValidation(member.getId(), status);
+    }
+
+    private static MembershipStatus effectiveStatus(SubscriptionEntity subscription, LocalDate today) {
+        return subscription.getStatus() == MembershipStatus.ACTIVE
+                        && subscription.getEndDate() != null
+                        && subscription.getEndDate().isBefore(today)
+                ? MembershipStatus.EXPIRED
+                : subscription.getStatus();
+    }
+
+    private static MembershipStatus higherPriority(MembershipStatus left, MembershipStatus right) {
+        return priority(right) > priority(left) ? right : left;
+    }
+
+    private static int priority(MembershipStatus status) {
+        return switch (status) {
+            case ACTIVE -> 3;
+            case PAUSED -> 2;
+            case EXPIRED -> 1;
+            case NONE -> 0;
+        };
     }
 }

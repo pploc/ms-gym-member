@@ -17,6 +17,10 @@ public class SubscriptionSpecifications {
         return (root, query, cb) -> memberId == null ? null : cb.equal(root.get("memberId"), memberId);
     }
 
+    public static Specification<SubscriptionEntity> hasGymId(String gymId) {
+        return (root, query, cb) -> gymId == null || gymId.isBlank() ? null : cb.equal(root.get("gymId"), gymId);
+    }
+
     public static Specification<SubscriptionEntity> hasAnyStatus(Collection<MembershipStatus> statuses) {
         return (root, query, cb) -> statuses == null || statuses.isEmpty() ? null : root.get("status").in(statuses);
     }

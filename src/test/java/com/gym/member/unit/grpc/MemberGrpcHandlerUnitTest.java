@@ -13,6 +13,7 @@ import com.gym.member.member.application.port.in.MembershipPurchaseUseCase;
 import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.member.application.service.MemberService;
 import com.gym.member.member.domain.dto.MemberDto;
+import com.gym.member.member.domain.dto.MembershipValidation;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.member.member.domain.exception.CannotPauseLifetimeException;
 import com.gym.member.member.domain.model.MembershipStatus;
@@ -43,13 +44,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.Spy;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -342,38 +347,59 @@ class MemberGrpcHandlerUnitTest {
     }
 
     @Test
-    void given_valid_member_when_validate_membership_then_returns_validate_membership_response() {
-        // given — internal workload; transport identity is enforced by interceptors, not role claims
+    void given_active_membership_when_validate_membership_then_returns_canonical_member_id() {
+        // given
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder()
-                .setMemberId(memberId.toString())
+                .setUserId(userId.toString())
                 .setGymId(gymId.toString())
                 .build();
-        SubscriptionDto subDto = new SubscriptionDto(
-                UUID.randomUUID(), memberId, gymId, UUID.randomUUID(), MembershipStatus.ACTIVE,
-                LocalDate.now(), LocalDate.now().plusDays(30), null, 30, 1);
-        when(memberService.getMember(memberId.toString())).thenReturn(memberDto);
-        when(subscriptionLifecycleUseCase.getActiveSubscription(memberId.toString(), gymId.toString()))
-                .thenReturn(subDto);
+        when(subscriptionLifecycleUseCase.validateMembership(userId.toString(), gymId.toString()))
+                .thenReturn(new MembershipValidation(memberId.toString(), MembershipStatus.ACTIVE));
+        ArgumentCaptor<ValidateMembershipResponse> response = ArgumentCaptor.forClass(ValidateMembershipResponse.class);
 
         // when
         memberGrpcHandler.validateMembership(request, responseObserver);
 
         // then
-        verify(responseObserver, times(1)).onNext(any(ValidateMembershipResponse.class));
-        verify(responseObserver, times(1)).onCompleted();
+        verify(responseObserver).onNext(response.capture());
+        verify(responseObserver).onCompleted();
+        assertEquals(memberId.toString(), response.getValue().getMemberId());
+        assertTrue(response.getValue().getValid());
+        assertEquals(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_ACTIVE, response.getValue().getStatus());
     }
 
     @Test
-    void given_error_on_validate_membership_when_validate_membership_then_calls_on_error() {
+    void given_no_membership_at_gym_when_validate_membership_then_returns_none_and_invalid() {
         // given
         ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder()
-                .setMemberId(memberId.toString())
+                .setUserId(userId.toString())
                 .setGymId(gymId.toString())
                 .build();
-        when(memberService.getMember(any())).thenThrow(new RuntimeException("Error"));
+        when(subscriptionLifecycleUseCase.validateMembership(userId.toString(), gymId.toString()))
+                .thenReturn(new MembershipValidation(memberId.toString(), MembershipStatus.NONE));
+        ArgumentCaptor<ValidateMembershipResponse> response = ArgumentCaptor.forClass(ValidateMembershipResponse.class);
+
+        // when
+        memberGrpcHandler.validateMembership(request, responseObserver);
+
+        // then
+        verify(responseObserver).onNext(response.capture());
+        assertEquals(memberId.toString(), response.getValue().getMemberId());
+        assertFalse(response.getValue().getValid());
+        assertEquals(com.gym.proto.common.v1.MembershipStatus.MEMBERSHIP_STATUS_NONE, response.getValue().getStatus());
+    }
+
+    @Test
+    void given_missing_member_when_validate_membership_then_propagates_not_found() {
+        // given
+        ValidateMembershipRequest request = ValidateMembershipRequest.newBuilder()
+                .setUserId(userId.toString())
+                .setGymId(gymId.toString())
+                .build();
+        when(subscriptionLifecycleUseCase.validateMembership(any(), any())).thenThrow(new NotFoundException("Missing"));
 
         // when / then
-        assertThrows(Throwable.class, () -> memberGrpcHandler.validateMembership(request, responseObserver));
+        assertThrows(NotFoundException.class, () -> memberGrpcHandler.validateMembership(request, responseObserver));
     }
 
     @Test

@@ -1,6 +1,6 @@
 # Member — local testing (gRPC)
 
-Copy-paste examples for the current `member.v1` Stage 0 contract (`gym-proto` `5.0.0`).
+Copy-paste examples for `gym-proto` `7.0.2`.
 
 ## Trust model
 
@@ -77,8 +77,10 @@ grpcurl "${MTLS_GATEWAY[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.p
 
 ```bash
 grpcurl "${MTLS_CHECKIN[@]}" -import-path "$PROTO_DIR" -proto member/v1/member.proto \
-  -d '{"memberId":"31b6a40a-99d7-4f22-b6f7-f62a11298ba0","gymId":"22222222-2222-2222-2222-222222222222"}' \
+  -d '{"userId":"11111111-1111-1111-1111-111111111111","gymId":"22222222-2222-2222-2222-222222222222"}' \
   localhost:50051 member.v1.MemberService/ValidateMembership
+
+Check-in sends no `x-user-*` metadata. Response returns canonical persisted `memberId`; `valid` is true only for `ACTIVE`.
 ```
 
 ### ListMembersByStatus — Notification only

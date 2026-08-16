@@ -13,6 +13,7 @@ import com.gym.member.member.application.service.MembershipEventFactory;
 import com.gym.member.member.application.service.SubscriptionActivationService;
 import com.gym.member.member.application.service.SubscriptionExpiryService;
 import com.gym.member.member.application.service.SubscriptionLifecycleService;
+import com.gym.member.member.domain.dto.MembershipValidation;
 import com.gym.member.member.domain.dto.PurchasedPlanTerms;
 import com.gym.member.member.domain.dto.SubscriptionDto;
 import com.gym.member.member.domain.exception.CannotPauseLifetimeException;
@@ -412,6 +413,109 @@ class SubscriptionServiceUnitTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> lifecycleService.getActiveSubscription(memberId, gymId));
+    }
+
+    @Test
+    void given_member_without_subscription_at_requested_gym_when_validate_membership_then_returns_canonical_none() {
+        // given
+        when(memberRepository.findOne(any(Specification.class))).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        // when
+        MembershipValidation result = lifecycleService.validateMembership(userId, gymId);
+
+        // then
+        assertEquals(memberId, result.memberId());
+        assertEquals(MembershipStatus.NONE, result.status());
+        verify(memberRepository).findOne(any(Specification.class));
+        verify(subscriptionRepository).findAll(any(Specification.class));
+    }
+
+    @Test
+    void given_missing_member_when_validate_membership_then_throws_not_found() {
+        // given
+        when(memberRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+
+        // when / then
+        assertThrows(NotFoundException.class, () -> lifecycleService.validateMembership(userId, gymId));
+        verify(subscriptionRepository, never()).findAll(any(Specification.class));
+    }
+
+    @Test
+    void given_active_subscription_ending_today_when_validate_membership_then_returns_active() {
+        // given
+        activeSub.setEndDate(LocalDate.now(clock));
+        when(memberRepository.findOne(any(Specification.class))).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
+
+        // when
+        MembershipValidation result = lifecycleService.validateMembership(userId, gymId);
+
+        // then
+        assertEquals(MembershipStatus.ACTIVE, result.status());
+    }
+
+    @Test
+    void given_lifetime_active_subscription_when_validate_membership_then_returns_active() {
+        // given
+        activeSub.setEndDate(null);
+        when(memberRepository.findOne(any(Specification.class))).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
+
+        // when
+        MembershipValidation result = lifecycleService.validateMembership(userId, gymId);
+
+        // then
+        assertEquals(MembershipStatus.ACTIVE, result.status());
+    }
+
+    @Test
+    void given_stale_active_subscription_when_validate_membership_then_returns_expired() {
+        // given
+        activeSub.setEndDate(LocalDate.now(clock).minusDays(1));
+        when(memberRepository.findOne(any(Specification.class))).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findAll(any(Specification.class))).thenReturn(List.of(activeSub));
+
+        // when
+        MembershipValidation result = lifecycleService.validateMembership(userId, gymId);
+
+        // then
+        assertEquals(MembershipStatus.EXPIRED, result.status());
+    }
+
+    @Test
+    void given_paused_expired_and_active_subscriptions_when_validate_membership_then_returns_highest_effective_status() {
+        // given
+        SubscriptionEntity pausedSub = subscriptionWithStatus(MembershipStatus.PAUSED);
+        SubscriptionEntity expiredSub = subscriptionWithStatus(MembershipStatus.EXPIRED);
+        SubscriptionEntity staleActiveSub = subscriptionWithStatus(MembershipStatus.ACTIVE);
+        staleActiveSub.setEndDate(LocalDate.now(clock).minusDays(1));
+        SubscriptionEntity currentActiveSub = subscriptionWithStatus(MembershipStatus.ACTIVE);
+        currentActiveSub.setEndDate(LocalDate.now(clock).plusDays(1));
+        when(memberRepository.findOne(any(Specification.class))).thenReturn(Optional.of(member));
+        when(subscriptionRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(pausedSub, expiredSub, staleActiveSub, currentActiveSub));
+
+        // when
+        MembershipValidation result = lifecycleService.validateMembership(userId, gymId);
+
+        // then
+        assertEquals(MembershipStatus.ACTIVE, result.status());
+    }
+
+    private SubscriptionEntity subscriptionWithStatus(MembershipStatus status) {
+        SubscriptionEntity subscription = new SubscriptionEntity();
+        subscription.setId(UUID.randomUUID().toString());
+        subscription.setMemberId(memberId);
+        subscription.setGymId(gymId);
+        subscription.setPlanId(planId);
+        subscription.setPlanTypeSnapshot(PlanType.MONTHLY);
+        subscription.setDurationDaysSnapshot(30);
+        subscription.setPriceVndSnapshot(500_000L);
+        subscription.setStatus(status);
+        subscription.setStartDate(LocalDate.now(clock));
+        subscription.setEndDate(LocalDate.now(clock).plusDays(30));
+        return subscription;
     }
 
     @Test

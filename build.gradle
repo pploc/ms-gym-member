@@ -34,7 +34,6 @@ if (gprKey == null || gprKey.isEmpty()) {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven { url 'https://packages.confluent.io/maven/' }
     maven {
@@ -64,8 +63,8 @@ def grpcVersion = '1.68.1'
 def testcontainersVersion = '1.20.1'
 
 dependencies {
-    implementation 'com.gym:common-java:2.1.1'
-    implementation 'com.gym.proto:gym-proto-java:6.0.1'
+    implementation 'com.gym:common-java:3.0.0-rc.1'
+    implementation 'com.gym.proto:gym-proto-java:7.0.2'
     implementation('com.google.protobuf:protobuf-java') {
         version { strictly '4.33.5' }
     }
@@ -121,6 +120,7 @@ def jacocoExcludes = [
 ]
 
 test {
+    dependsOn 'ensureLocalCerts'
     useJUnitPlatform()
     finalizedBy jacocoTestReport
 }
@@ -179,8 +179,11 @@ need=
 for f in certs/local/server.crt certs/local/server.key certs/local/ca.crt \
          certs/local/client-gateway.crt certs/local/client-gateway.key \
          certs/local/client-kong.crt certs/local/client-kong.key \
+         certs/local/client-postman.crt certs/local/client-postman.key \
+         certs/local/client-identifier.crt certs/local/client-identifier.key \
          certs/local/client-member.crt certs/local/client-member.key \
-         certs/local/client-checkin.crt certs/local/client-notification.crt; do
+         certs/local/client-checkin.crt certs/local/client-checkin.key \
+         certs/local/client-notification.crt certs/local/client-notification.key; do
   if [ ! -f "$f" ]; then need=1; break; fi
 done
 if [ -n "$need" ]; then

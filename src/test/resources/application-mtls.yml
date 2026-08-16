@@ -1,0 +1,13 @@
+grpc:
+  server:
+    port: 56051
+    tls:
+      enabled: true
+      allow-plaintext: false
+      certificate-chain: certs/local/server.crt
+      private-key: certs/local/server.key
+      client-ca: certs/local/ca.crt
+
+logging:
+  level:
+    root: WARN

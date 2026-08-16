@@ -5,7 +5,7 @@ import com.gym.member.member.adapter.out.persistence.mapper.MemberMapper;
 import com.gym.member.member.application.port.in.MemberUseCase;
 import com.gym.member.member.application.port.in.SubscriptionLifecycleUseCase;
 import com.gym.member.member.domain.dto.MemberDto;
-import com.gym.member.member.domain.dto.SubscriptionDto;
+import com.gym.member.member.domain.dto.MembershipValidation;
 import com.gym.member.member.domain.model.MembershipStatus;
 import com.gym.member.shared.mapper.ProtoEnums;
 import com.gym.proto.member.v1.GetMemberRequest;
@@ -75,12 +75,12 @@ public class MemberGrpcDelegate {
 
     public void validateMembership(ValidateMembershipRequest request, StreamObserver<ValidateMembershipResponse> responseObserver) {
         execute(responseObserver, () -> {
-            MemberDto member = memberUseCase.getMember(request.getMemberId());
-            SubscriptionDto sub = subscriptionLifecycleUseCase.getActiveSubscription(member.id().toString(), request.getGymId());
-            boolean valid = sub.status() == MembershipStatus.ACTIVE;
+            MembershipValidation validation = subscriptionLifecycleUseCase.validateMembership(
+                    request.getUserId(), request.getGymId());
             return ValidateMembershipResponse.newBuilder()
-                    .setValid(valid)
-                    .setStatus(ProtoEnums.toProto(sub.status()))
+                    .setMemberId(validation.memberId())
+                    .setValid(validation.status() == MembershipStatus.ACTIVE)
+                    .setStatus(ProtoEnums.toProto(validation.status()))
                     .build();
         });
     }

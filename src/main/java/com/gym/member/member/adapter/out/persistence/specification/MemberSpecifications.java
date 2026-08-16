@@ -23,6 +23,10 @@ public class MemberSpecifications {
         };
     }
 
+    public static Specification<MemberEntity> hasUserId(String userId) {
+        return (root, query, cb) -> userId == null || userId.isBlank() ? null : cb.equal(root.get("userId"), userId);
+    }
+
     public static Specification<MemberEntity> hasStatus(MembershipStatus status) {
         return (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status);
     }

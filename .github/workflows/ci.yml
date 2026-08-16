@@ -5,6 +5,13 @@ on:
     branches: [develop, main, 'feature/**', 'hotfix/**']
   pull_request:
     branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      publish_image:
+        description: Publish immutable source-SHA image from develop
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -24,17 +31,15 @@ jobs:
     name: Build & push image
     needs: java-ci
     if: >
-      github.event_name == 'push' && (
-        github.ref == 'refs/heads/develop' ||
-        github.ref == 'refs/heads/main' ||
-        startsWith(github.ref, 'refs/heads/feature/') ||
-        startsWith(github.ref, 'refs/heads/hotfix/')
-      )
-    uses: pploc/gym-infra/.github/workflows/docker-build.yml@4aa5f289f526b3fc2bb22790fe6e0dc2b49fe243
+      github.event_name == 'workflow_dispatch' &&
+      inputs.publish_image &&
+      github.ref == 'refs/heads/develop'
+    uses: pploc/gym-infra/.github/workflows/docker-build.yml@ace7a285cc14b3e1121cac17bcfa9ea0ce5d1102
     with:
       service_name: ms-gym-member
       context: .
       push: true
+      source_sha_only: true
       max_tags: 20
     permissions:
       contents: read
