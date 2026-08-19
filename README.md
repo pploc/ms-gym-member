@@ -99,7 +99,7 @@ Payment must return the same intent for repeated `InitiatePayment` with the same
 Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image.
 
 ### Shared libraries
-- `com.gym:common-java:3.0.0-rc.1`
+- `com.gym:common-java:3.0.0`
 - `com.gym.proto:gym-proto-java:7.0.2`
 
 `ValidateMembership` resolves `user_id` and `gym_id` only for Check-in mTLS identity. It returns persisted canonical `member_id`; `valid` is true only for effective `ACTIVE`. Effective order is `ACTIVE`, `PAUSED`, `EXPIRED`, `NONE`; stale active rows expire only when `end_date < UTC today`.
