@@ -29,6 +29,10 @@ app:
       target: localhost:0
       deadline: PT3S
       use-plaintext: true
+      client-cert: ""
+      client-key: ""
+      server-ca: ""
+      authority: ms-gym-payment
     plans:
       target: localhost:0
       deadline: PT3S

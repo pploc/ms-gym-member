@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.Objects;
 
 @Slf4j
@@ -42,6 +43,10 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
         requireNonBlank(gymId, "selected gym_id is required");
         requireNonBlank(planId, "plan_id is required");
         requireNonBlank(provider, "provider is required");
+        String normalizedProvider = provider.trim().toUpperCase(Locale.ROOT);
+        if (!"SEPAY".equals(normalizedProvider)) {
+            throw new IllegalArgumentException("unsupported payment provider: " + normalizedProvider);
+        }
         requireNonBlank(idempotencyKey, "idempotency_key is required");
         if (discountCode != null && !discountCode.isBlank()) {
             throw new IllegalArgumentException("discount codes are not supported until authoritative discount pricing exists");
@@ -52,15 +57,15 @@ public class MembershipPurchaseService implements MembershipPurchaseUseCase {
         PendingPurchaseEntity purchase;
         try {
             purchase = persistenceService.load(userId, normalizedKey);
-            requireSameRequest(purchase, member, gymId, planId, provider);
+            requireSameRequest(purchase, member, gymId, planId, normalizedProvider);
         } catch (com.gym.common.error.NotFoundException ignored) {
             ResolvePurchasablePlanResponse resolved = plansGrpcClient.resolvePurchasablePlan(planId, gymId);
             PlanType planType = ProtoEnums.toDomain(resolved.getPlanType());
             try {
-                purchase = persistenceService.create(member, userId, provider, normalizedKey, resolved, planType);
+                purchase = persistenceService.create(member, userId, normalizedProvider, normalizedKey, resolved, planType);
             } catch (DataIntegrityViolationException concurrentCreate) {
                 purchase = persistenceService.load(userId, normalizedKey);
-                PendingPurchasePersistenceService.requireSameIntent(purchase, member, provider, resolved, planType);
+                PendingPurchasePersistenceService.requireSameIntent(purchase, member, normalizedProvider, resolved, planType);
             }
         }
 

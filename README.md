@@ -94,9 +94,17 @@ Payment must return the same intent for repeated `InitiatePayment` with the same
 | `MEMBER_GRPC_SERVER_KEY` | `certs/local/server.key` | server key; **prod must override** |
 | `MEMBER_GRPC_CLIENT_CA` | `certs/local/ca.crt` | client trust CA; **prod must override** |
 | `PLANS_GRPC_TARGET` | _(empty)_ | Plans gRPC host:port; required for purchase |
+| `PLANS_GRPC_USE_PLAINTEXT` | `false` | Plans mTLS is required by default |
+| `PLANS_CLIENT_CERT` / `PLANS_CLIENT_KEY` | `certs/local/client-member.crt` / `.key` | Member client identity |
+| `PLANS_SERVER_CA` | `certs/local/ca.crt` | Plans server trust CA |
+| `PLANS_GRPC_AUTHORITY` | `ms-gym-plans` | Plans TLS server name |
 | `PAYMENT_GRPC_TARGET` | _(empty)_ | Payment gRPC host:port |
+| `PAYMENT_GRPC_USE_PLAINTEXT` | `false` | Payment mTLS is required by default |
+| `PAYMENT_CLIENT_CERT` / `PAYMENT_CLIENT_KEY` | `certs/local/client-member.crt` / `.key` | Member client identity |
+| `PAYMENT_SERVER_CA` | `certs/local/ca.crt` | Payment server trust CA |
+| `PAYMENT_GRPC_AUTHORITY` | `ms-gym-payment` | Payment TLS server name |
 
-Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image.
+`client-member` carries the `ms-gym-member` SAN used by local Plans and Payment mTLS. Local defaults point at `certs/local/` (gitignored; `bootRun` → `ensureLocalCerts`). Never bake those files into the image.
 
 ### Shared libraries
 - `com.gym:common-java:3.0.0`

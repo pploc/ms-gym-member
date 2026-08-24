@@ -35,7 +35,11 @@ public record MemberProperties(
     public record PaymentProperties(
             String target,
             Duration deadline,
-            boolean usePlaintext
+            boolean usePlaintext,
+            String clientCert,
+            String clientKey,
+            String serverCa,
+            String authority
     ) {}
 
     public record PlansProperties(

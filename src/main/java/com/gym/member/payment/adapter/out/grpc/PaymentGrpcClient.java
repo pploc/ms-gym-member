@@ -8,10 +8,15 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PreDestroy;
+
+import javax.net.ssl.SSLException;
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -24,18 +29,31 @@ public class PaymentGrpcClient implements AutoCloseable {
 
     public PaymentGrpcClient(MemberProperties properties) {
         this.properties = properties;
-        String target = properties.payment().target();
+        String target = properties.payment() != null ? properties.payment().target() : null;
         if (target == null || target.isBlank()) {
             this.channel = null;
             this.stub = null;
             return;
         }
 
-        ManagedChannelBuilder<?> builder = ManagedChannelBuilder.forTarget(target);
-        if (properties.payment().usePlaintext()) {
-            builder.usePlaintext();
+        MemberProperties.PaymentProperties payment = properties.payment();
+        if (payment.usePlaintext()) {
+            this.channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
+        } else {
+            try {
+                NettyChannelBuilder builder = NettyChannelBuilder.forTarget(target)
+                        .sslContext(GrpcSslContexts.forClient()
+                                .keyManager(new File(payment.clientCert()), new File(payment.clientKey()))
+                                .trustManager(new File(payment.serverCa()))
+                                .build());
+                if (payment.authority() != null && !payment.authority().isBlank()) {
+                    builder.overrideAuthority(payment.authority());
+                }
+                this.channel = builder.build();
+            } catch (SSLException e) {
+                throw new IllegalStateException("Failed to configure Payment mTLS client", e);
+            }
         }
-        this.channel = builder.build();
         this.stub = PaymentServiceGrpc.newBlockingStub(channel);
     }
 

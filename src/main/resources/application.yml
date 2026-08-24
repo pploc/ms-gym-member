@@ -62,7 +62,11 @@ app:
     payment:
       target: ${PAYMENT_GRPC_TARGET:}
       deadline: ${PAYMENT_GRPC_DEADLINE:PT3S}
-      use-plaintext: ${PAYMENT_GRPC_USE_PLAINTEXT:true}
+      use-plaintext: ${PAYMENT_GRPC_USE_PLAINTEXT:false}
+      client-cert: ${PAYMENT_CLIENT_CERT:certs/local/client-member.crt}
+      client-key: ${PAYMENT_CLIENT_KEY:certs/local/client-member.key}
+      server-ca: ${PAYMENT_SERVER_CA:certs/local/ca.crt}
+      authority: ${PAYMENT_GRPC_AUTHORITY:ms-gym-payment}
     plans:
       target: ${PLANS_GRPC_TARGET:}
       deadline: ${PLANS_GRPC_DEADLINE:PT3S}
