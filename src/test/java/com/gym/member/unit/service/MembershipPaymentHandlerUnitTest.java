@@ -90,6 +90,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
+                .setProvider("STRIPE")
                 .build();
         when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
         when(pendingPurchaseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -118,6 +119,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
+                .setProvider("STRIPE")
                 .build();
         when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
 
@@ -136,6 +138,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
+                .setProvider("STRIPE")
                 .build();
         when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
         when(pendingPurchaseRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -178,6 +181,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
+                .setProvider("STRIPE")
                 .build();
         when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
 
@@ -193,6 +197,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setGymId(UUID.randomUUID().toString())
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
+                .setProvider("STRIPE")
                 .build();
         when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
 
@@ -228,6 +233,23 @@ class MembershipPaymentHandlerUnitTest {
     }
 
     @Test
+    void givenProviderMismatch_whenHandle_thenThrowsIllegalArgumentException() {
+        PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
+                .setUserId(userId)
+                .setReferenceId(purchaseId)
+                .setGymId(gymId)
+                .setPaymentId(paymentId)
+                .setAmountVnd(500_000L)
+                .setProvider("MOMO")
+                .build();
+        when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
+
+        assertThrows(IllegalArgumentException.class, () -> handler.handle(event, userId));
+        verify(subscriptionActivationUseCase, never()).activateOrRenewSubscription(any(), any());
+        verify(pendingPurchaseRepository, never()).save(any());
+    }
+
+    @Test
     void givenNonPendingNonCompletedStatus_whenHandle_thenThrowsIllegalStateException() {
         purchase.setStatus(PurchaseStatus.FAILED);
         PaymentCompletedEvent event = PaymentCompletedEvent.newBuilder()
@@ -236,6 +258,7 @@ class MembershipPaymentHandlerUnitTest {
                 .setGymId(gymId)
                 .setPaymentId(paymentId)
                 .setAmountVnd(500_000L)
+                .setProvider("STRIPE")
                 .build();
         when(pendingPurchaseRepository.findWithLockingById(purchaseId)).thenReturn(Optional.of(purchase));
 

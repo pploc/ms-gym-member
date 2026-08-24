@@ -62,6 +62,12 @@ public class MembershipPaymentHandler implements PaymentTypeHandler {
         if (event.getAmountVnd() != purchase.getPriceVndSnapshot()) {
             throw new IllegalArgumentException("PaymentCompletedEvent amount mismatch for purchase " + purchaseId);
         }
+        if (event.getProvider() == null || event.getProvider().isBlank()) {
+            throw new IllegalArgumentException("PaymentCompletedEvent missing provider");
+        }
+        if (!event.getProvider().equals(purchase.getProvider())) {
+            throw new IllegalArgumentException("PaymentCompletedEvent provider mismatch for purchase " + purchaseId);
+        }
 
         subscriptionActivationUseCase.activateOrRenewSubscription(
                 purchase.getMemberId(),
